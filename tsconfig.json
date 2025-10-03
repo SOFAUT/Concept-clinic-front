@@ -1,0 +1,16 @@
+{
+  "files": [],
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"]
+    },
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+
+  },
+    "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]  
+}
