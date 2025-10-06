@@ -3,8 +3,8 @@ import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
 import { persistor, store } from "./core/store";
 import { BrowserRouter } from "react-router";
-import { ThemeProvider } from "@mui/material";
-import theme from "./assets/styles/theme";
+import { ThemeProvider } from "@mui/material/styles";
+import getTheme from "./assets/styles/theme";
 import { AuthProvider } from "./app/providers/AuthProvider";
 import { AppRoutes } from "./app/routes/routes";
 import "@/assets/i18n/i18n";
@@ -17,7 +17,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <BrowserRouter>
-          <ThemeProvider theme={theme("light")}>
+          <ThemeProvider theme={getTheme("light")}>
             <AuthProvider>
               <AppRoutes />
             </AuthProvider>
