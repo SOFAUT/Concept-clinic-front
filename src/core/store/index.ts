@@ -12,8 +12,17 @@ import authReducer, {
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { httpClient } from "../http/httpClient";
 import { authService } from "../http/services/authService";
+import clinicReducer from "./slices/clinicSlice";
+import patientReducer from "./slices/patientSlice";
+import appointmentReducer from "./slices/appointmentSlice";
 
-const rootReducer = combineReducers({ auth: authReducer });
+const rootReducer = combineReducers({ 
+  auth: authReducer,
+  clinic: clinicReducer,      
+  patient: patientReducer,    
+  appointment: appointmentReducer, 
+});
+
 export type RootState = ReturnType<typeof rootReducer>;
 
 const persistConfig: PersistConfig<RootState> = {

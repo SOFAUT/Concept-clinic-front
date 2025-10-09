@@ -7,9 +7,24 @@ import AuthLayout from "../../components/layout/AuthLayout";
 import Login from "../../pages/authPages/Login";
 import Register from "../../pages/authPages/Register";
 
+// Admin Pages
+import AdminDashboard from "../../pages/adminPages/Dashboard";
+import ClinicsManagement from "../../pages/adminPages/ClinicsManagement";
+
+// Clinic Pages
+import ClinicDashboard from "../../pages/clinicPages/Dashboard";
+import Appointments from "../../pages/clinicPages/Appointments";
+import Patients from "../../pages/clinicPages/Patients";
+import Procedures from "../../pages/clinicPages/Procedures";
+
+// Patient Pages
+import PatientDashboard from "../../pages/patientPages/Dashboard";
+import MyAppointments from "../../pages/patientPages/MyAppointments";
+import Profile from "../../pages/patientPages/Profile";
+
 export const AppRoutes = () => (
   <Routes>
-    {/* register routes */}
+    {/* Auth routes */}
     <Route
       path={APP_ROUTES.LOGIN}
       element={
@@ -27,7 +42,7 @@ export const AppRoutes = () => (
       }
     />
 
-    {/* private routes */}
+    {/* Private routes */}
     <Route
       element={
         <AuthMiddleware>
@@ -35,7 +50,26 @@ export const AppRoutes = () => (
         </AuthMiddleware>
       }
     >
-      <Route path={APP_ROUTES.HOME} element={<h1>Home</h1>} />
+      {/* Admin Routes */}
+      <Route path={APP_ROUTES.ADMIN.DASHBOARD} element={<AdminDashboard />} />
+      <Route path={APP_ROUTES.ADMIN.CLINICS} element={<ClinicsManagement />} />
+
+      {/* Clinic Routes */}
+      <Route path={APP_ROUTES.CLINIC.DASHBOARD} element={<ClinicDashboard />} />
+      <Route path={APP_ROUTES.CLINIC.APPOINTMENTS} element={<Appointments />} />
+      <Route path={APP_ROUTES.CLINIC.PATIENTS} element={<Patients />} />
+      <Route path={APP_ROUTES.CLINIC.PROCEDURES} element={<Procedures />} />
+
+      {/* Patient Routes */}
+      <Route path={APP_ROUTES.PATIENT.DASHBOARD} element={<PatientDashboard />} />
+      <Route path={APP_ROUTES.PATIENT.APPOINTMENTS} element={<MyAppointments />} />
+      <Route path={APP_ROUTES.PATIENT.HISTORY} element={<PatientDashboard />} />
+      <Route path={APP_ROUTES.PATIENT.PROFILE} element={<Profile />} />
+
+      {/* Home redirect based on role */}
+      <Route path={APP_ROUTES.HOME} element={<AdminDashboard />} />
+      
+      {/* 404 */}
       <Route path={APP_ROUTES.NOTFOUND} element={<NotFound />} />
     </Route>
   </Routes>

@@ -23,6 +23,27 @@ export const APP_ROUTES = {
   HOME: "/",
   LOGIN: "/login",
   REGISTER: "/register",
+  
+  ADMIN: {
+    DASHBOARD: "/admin",
+    CLINICS: "/admin/clinics",
+  },
+  
+  CLINIC: {
+    DASHBOARD: "/clinic",
+    APPOINTMENTS: "/clinic/appointments",
+    PATIENTS: "/clinic/patients",
+    PROCEDURES: "/clinic/procedures",
+    PROFESSIONALS: "/clinic/professionals",
+    FINANCIAL: "/clinic/financial",
+  },
+  
+  PATIENT: {
+    DASHBOARD: "/patient",
+    APPOINTMENTS: "/patient/appointments",
+    HISTORY: "/patient/history",
+    PROFILE: "/patient/profile",
+  },
 };
 
 export const ENDPOINTS = {

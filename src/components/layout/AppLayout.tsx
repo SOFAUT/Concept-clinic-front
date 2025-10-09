@@ -4,13 +4,19 @@ import { Outlet } from "react-router";
 import Header from "../ui/header/Header";
 import LayoutSidebar from "../ui/sidebar/LayoutSidebar";
 import getTheme from "../../assets/styles/theme";
-import HomeIcon from "@mui/icons-material/Home";
 import PeopleIcon from "@mui/icons-material/People";
-import SettingsIcon from "@mui/icons-material/Settings";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import BusinessIcon from "@mui/icons-material/Business";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import MedicalIcon from "@mui/icons-material/MedicalServices";
+import HistoryIcon from "@mui/icons-material/History";
+import { APP_ROUTES } from "../../util/constants";
+import { useAppSelector } from "../../core/store/hooks";
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [themeMode, setThemeMode] = useState<"light" | "dark">("light");
+  const user = useAppSelector((state) => state.auth.user);
 
   const theme = useMemo(() => getTheme(themeMode), [themeMode]);
 
@@ -18,11 +24,28 @@ export default function AppLayout() {
     setThemeMode((prev) => (prev === "light" ? "dark" : "light"));
   };
 
-  const sidebarMenus = [
-    { icon: <HomeIcon />, label: "Home", to: "/" },
-    { icon: <PeopleIcon />, label: "Users", to: "/users" },
-    { icon: <SettingsIcon />, label: "Settings", to: "/settings" },
-  ];
+  const getMenuByRole = (role: string) => {
+    const menus = {
+      admin: [
+        { icon: <DashboardIcon />, label: "Dashboard", to: APP_ROUTES.ADMIN.DASHBOARD },
+        { icon: <BusinessIcon />, label: "Clínicas", to: APP_ROUTES.ADMIN.CLINICS },
+      ],
+      clinic: [
+        { icon: <DashboardIcon />, label: "Dashboard", to: APP_ROUTES.CLINIC.DASHBOARD },
+        { icon: <CalendarMonthIcon />, label: "Agendamentos", to: APP_ROUTES.CLINIC.APPOINTMENTS },
+        { icon: <PeopleIcon />, label: "Pacientes", to: APP_ROUTES.CLINIC.PATIENTS },
+        { icon: <MedicalIcon />, label: "Procedimentos", to: APP_ROUTES.CLINIC.PROCEDURES },
+      ],
+      patient: [
+        { icon: <DashboardIcon />, label: "Início", to: APP_ROUTES.PATIENT.DASHBOARD },
+        { icon: <CalendarMonthIcon />, label: "Agendamentos", to: APP_ROUTES.PATIENT.APPOINTMENTS },
+        { icon: <HistoryIcon />, label: "Histórico", to: APP_ROUTES.PATIENT.HISTORY },
+      ],
+    };
+    return menus[role as keyof typeof menus] || [];
+  };
+
+  const sidebarMenus = getMenuByRole(user?.role || '');
 
   return (
     <ThemeProvider theme={theme}>
