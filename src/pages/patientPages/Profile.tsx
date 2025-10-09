@@ -1,4 +1,4 @@
-import { Box, Typography, Paper, TextField, Button, Grid } from '@mui/material';
+import { Box, Typography, Paper, TextField, Button, Stack } from '@mui/material';
 
 export default function Profile() {
   return (
@@ -8,49 +8,43 @@ export default function Profile() {
       </Typography>
       
       <Paper sx={{ p: 3 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
+        <Stack spacing={3}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
             <TextField
               label="Nome"
               fullWidth
               disabled
               defaultValue=""
             />
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
             <TextField
               label="Email"
               fullWidth
               disabled
               defaultValue=""
             />
-          </Grid>
+          </Stack>
           
-          <Grid item xs={12} md={6}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
             <TextField
               label="Telefone"
               fullWidth
               disabled
               defaultValue=""
             />
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
             <TextField
               label="CPF"
               fullWidth
               disabled
               defaultValue=""
             />
-          </Grid>
+          </Stack>
           
-          <Grid item xs={12}>
+          <Box>
             <Button variant="contained">
               Editar Perfil
             </Button>
-          </Grid>
-        </Grid>
+          </Box>
+        </Stack>
       </Paper>
     </Box>
   );

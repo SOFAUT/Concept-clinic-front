@@ -1,4 +1,4 @@
-import { Box, Typography, Grid, Paper } from '@mui/material';
+import { Box, Typography, Paper, Stack } from '@mui/material';
 
 export default function ClinicDashboard() {
   return (
@@ -7,8 +7,8 @@ export default function ClinicDashboard() {
         Dashboard - Clínica
       </Typography>
       
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={3}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
+        <Box flex={1}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Agendamentos Hoje
@@ -17,9 +17,9 @@ export default function ClinicDashboard() {
               0
             </Typography>
           </Paper>
-        </Grid>
+        </Box>
         
-        <Grid item xs={12} md={3}>
+        <Box flex={1}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Total de Pacientes
@@ -28,9 +28,9 @@ export default function ClinicDashboard() {
               0
             </Typography>
           </Paper>
-        </Grid>
+        </Box>
         
-        <Grid item xs={12} md={3}>
+        <Box flex={1}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Procedimentos
@@ -39,9 +39,9 @@ export default function ClinicDashboard() {
               0
             </Typography>
           </Paper>
-        </Grid>
+        </Box>
         
-        <Grid item xs={12} md={3}>
+        <Box flex={1}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Receita do Mês
@@ -50,8 +50,8 @@ export default function ClinicDashboard() {
               R$ 0,00
             </Typography>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
     </Box>
   );
 }

@@ -8,16 +8,20 @@ interface AuthMiddlewareProps {
 }
 
 export const AuthMiddleware = ({ children }: AuthMiddlewareProps) => {
-  // COMENTADO TEMPORARIAMENTE PARA TESTE SEM API
-  // const accessToken = useAppSelector((state) => state.auth.accessToken);
-  // const navigate = useNavigate();
+  const accessToken = useAppSelector((state) => state.auth.accessToken);
+  const navigate = useNavigate();
 
-  // useEffect(() => {
-  //   if (!accessToken) {
-  //     navigate(APP_ROUTES.LOGIN);
-  //   }
-  // }, [accessToken, navigate]);
+  useEffect(() => {
+    if (!accessToken) {
+      console.log('🔒 Usuário não autenticado, redirecionando para login');
+      navigate(APP_ROUTES.LOGIN);
+    }
+  }, [accessToken, navigate]);
 
-  // PERMITE ACESSO LIVRE PARA TESTE
+  // Se não tem token, não renderiza nada (vai redirecionar)
+  if (!accessToken) {
+    return null;
+  }
+
   return <>{children}</>;
 };

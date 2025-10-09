@@ -1,4 +1,4 @@
-import { Box, Typography, Grid, Paper } from '@mui/material';
+import { Box, Typography, Paper, Stack } from '@mui/material';
 
 export default function AdminDashboard() {
   return (
@@ -7,8 +7,8 @@ export default function AdminDashboard() {
         Dashboard - Administrador
       </Typography>
       
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
+        <Box flex={1}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Total de Clínicas
@@ -17,9 +17,9 @@ export default function AdminDashboard() {
               0
             </Typography>
           </Paper>
-        </Grid>
+        </Box>
         
-        <Grid item xs={12} md={4}>
+        <Box flex={1}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Clínicas Ativas
@@ -28,9 +28,9 @@ export default function AdminDashboard() {
               0
             </Typography>
           </Paper>
-        </Grid>
+        </Box>
         
-        <Grid item xs={12} md={4}>
+        <Box flex={1}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Total de Usuários
@@ -39,8 +39,8 @@ export default function AdminDashboard() {
               0
             </Typography>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
     </Box>
   );
 }

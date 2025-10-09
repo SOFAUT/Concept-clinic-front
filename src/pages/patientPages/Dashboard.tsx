@@ -1,4 +1,4 @@
-import { Box, Typography, Grid, Paper } from '@mui/material';
+import { Box, Typography, Paper, Stack } from '@mui/material';
 
 export default function PatientDashboard() {
   return (
@@ -7,8 +7,8 @@ export default function PatientDashboard() {
         Meu Painel
       </Typography>
       
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
+        <Box flex={1}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Próximos Agendamentos
@@ -17,9 +17,9 @@ export default function PatientDashboard() {
               0
             </Typography>
           </Paper>
-        </Grid>
+        </Box>
         
-        <Grid item xs={12} md={6}>
+        <Box flex={1}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Procedimentos Realizados
@@ -28,8 +28,8 @@ export default function PatientDashboard() {
               0
             </Typography>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
     </Box>
   );
 }

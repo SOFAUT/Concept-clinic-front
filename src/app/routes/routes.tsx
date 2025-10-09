@@ -22,6 +22,9 @@ import PatientDashboard from "../../pages/patientPages/Dashboard";
 import MyAppointments from "../../pages/patientPages/MyAppointments";
 import Profile from "../../pages/patientPages/Profile";
 
+// Common Components
+import RoleBasedRedirect from "../../components/common/RoleBasedRedirect";
+
 export const AppRoutes = () => (
   <Routes>
     {/* Auth routes */}
@@ -67,7 +70,7 @@ export const AppRoutes = () => (
       <Route path={APP_ROUTES.PATIENT.PROFILE} element={<Profile />} />
 
       {/* Home redirect based on role */}
-      <Route path={APP_ROUTES.HOME} element={<AdminDashboard />} />
+      <Route path={APP_ROUTES.HOME} element={<RoleBasedRedirect />} />
       
       {/* 404 */}
       <Route path={APP_ROUTES.NOTFOUND} element={<NotFound />} />

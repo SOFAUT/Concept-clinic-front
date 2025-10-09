@@ -13,17 +13,23 @@ export function useAuth() {
     setError(null)
     try {
       const response = await authService.login({ email, password })
-      console.log('[useAuth] login response', response)
-      if (response && response.data) {
+      console.log('[useAuth] login response completa:', response)
+      console.log('[useAuth] response.data:', response?.data)
+      
+      if (response?.data?.access && response?.data?.refresh && response?.data?.user) {
+        console.log('[useAuth] Credenciais válidas, salvando no Redux')
         setCredentials({
           accessToken: response.data.access,
           refreshToken: response.data.refresh,
           user: response.data.user
         })
+        console.log('[useAuth] Login bem-sucedido!')
       } else {
+        console.error('[useAuth] Resposta inválida:', response)
         throw new Error('Resposta inválida do servidor')
       }
     } catch (err: any) {
+      console.error('[useAuth] Erro no login:', err)
       setError(err.message || 'Erro ao fazer login')
       throw err
     } finally {
@@ -36,6 +42,22 @@ export function useAuth() {
     setError(null)
     try {
       const response = await authService.register({ first_name, last_name, email, password, password2 })
+      console.log('[useAuth] register response', response)
+      
+      // Após registrar com sucesso, faz login automático
+      if (response && response.data) {
+        setCredentials({
+          accessToken: response.data.access,
+          refreshToken: response.data.refresh,
+          user: {
+            id: response.data.id,
+            first_name: response.data.first_name,
+            last_name: response.data.last_name,
+            email: response.data.email,
+            role: response.data.role
+          }
+        })
+      }
     } catch (err: any) {
       setError(err.message || 'Erro ao cadastrar')
       throw err

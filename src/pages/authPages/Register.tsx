@@ -24,7 +24,8 @@ export default function Register() {
     }
     try {
       await register({ first_name: firstName, last_name: lastName, email, password, password2 })
-      navigate(APP_ROUTES.LOGIN)
+      // Após registro bem-sucedido, redireciona para home (que vai para dashboard do role)
+      navigate(APP_ROUTES.HOME)
     } catch (err: any) {
       setFormError(err.message || 'Erro ao cadastrar')
     }
