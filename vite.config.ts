@@ -7,9 +7,12 @@ export default defineConfig({
   server: {
     port: 5100,
   },
- resolve: {
+  resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
+  },
+  define: {
+    'import.meta.env.VITE_PERSIST_SECRET': JSON.stringify('your-secret-key-here-change-in-production'),
   },
 });
