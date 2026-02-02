@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5100,
+    strictPort: false, // Se a porta 5100 estiver ocupada, tenta automaticamente a próxima disponível
+    host: true, // Permite acesso via rede local
+    open: true, // Abre o navegador automaticamente
   },
   resolve: {
     alias: {

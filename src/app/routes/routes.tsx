@@ -27,6 +27,9 @@ import RoleBasedRedirect from "../../components/common/RoleBasedRedirect";
 
 export const AppRoutes = () => (
   <Routes>
+    {/* Home redirect based on role - OUTSIDE AuthMiddleware */}
+    <Route path={APP_ROUTES.HOME} element={<RoleBasedRedirect />} />
+
     {/* Auth routes */}
     <Route
       path={APP_ROUTES.LOGIN}
@@ -68,12 +71,9 @@ export const AppRoutes = () => (
       <Route path={APP_ROUTES.PATIENT.APPOINTMENTS} element={<MyAppointments />} />
       <Route path={APP_ROUTES.PATIENT.HISTORY} element={<PatientDashboard />} />
       <Route path={APP_ROUTES.PATIENT.PROFILE} element={<Profile />} />
-
-      {/* Home redirect based on role */}
-      <Route path={APP_ROUTES.HOME} element={<RoleBasedRedirect />} />
-      
-      {/* 404 */}
-      <Route path={APP_ROUTES.NOTFOUND} element={<NotFound />} />
     </Route>
+
+    {/* 404 - Deve ser a última rota */}
+    <Route path={APP_ROUTES.NOTFOUND} element={<NotFound />} />
   </Routes>
 );
