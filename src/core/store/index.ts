@@ -25,16 +25,19 @@ const rootReducer = combineReducers({
 
 export type RootState = ReturnType<typeof rootReducer>;
 
+const persistSecret = import.meta.env.VITE_PERSIST_SECRET as string | undefined;
 const persistConfig: PersistConfig<RootState> = {
   key: "root",
   storage,
   whitelist: ["auth"],
-  transforms: [
-    encryptTransform({
-      secretKey: import.meta.env.VITE_PERSIST_SECRET || "",
-      onError: (_err) => {},
-    }),
-  ],
+  transforms: persistSecret
+    ? [
+        encryptTransform({
+          secretKey: persistSecret,
+          onError: (_err) => {},
+        }),
+      ]
+    : [],
 };
 
 const persistedReducer = persistReducer<RootState>(persistConfig, rootReducer);
