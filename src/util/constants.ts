@@ -13,17 +13,22 @@ export const CACHE_CONFIG = {
 export const VALIDATION_PATTERNS = {
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   CPF: /^\d{3}\.\d{3}\.\d{3}-\d{2}$/,
+  CNPJ: /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/,
   PASSWORD: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/,
   CELLPHONE: /^(\d{0,2})(\d{0,5})(\d{0,4})$/,
   CEP: /^\d{5}-\d{3}$/,
+  /** Telefone: (00) 00000-0000 ou (00) 0000-0000 */
+  TELEFONE: /^\(\d{2}\)\s\d{4,5}-\d{4}$/,
 };
 
 export const APP_ROUTES = {
   NOTFOUND: "*",
   HOME: "/",
   LOGIN: "/login",
+  LOGIN_CLINIC: "/login-clinic",
   REGISTER: "/register",
-  
+  REGISTER_CLINIC: "/register-clinic",
+
   ADMIN: {
     DASHBOARD: "/admin",
     CLINICS: "/admin/clinics",
@@ -42,6 +47,7 @@ export const APP_ROUTES = {
     DASHBOARD: "/patient",
     APPOINTMENTS: "/patient/appointments",
     HISTORY: "/patient/history",
+    PAYMENTS: "/patient/payments",
     PROFILE: "/patient/profile",
   },
 };
@@ -49,9 +55,11 @@ export const APP_ROUTES = {
 export const ENDPOINTS = {
   AUTH: {
     LOGIN: "/auth/login/",
+    LOGIN_CLINIC: "/auth/login-clinic/",
     OTP_VERIFY: "/auth/otp-verify/",
     RECOVERY: "/auth/recovery/",
     REGISTER: "/auth/register/",
+    REGISTER_CLINIC: "/auth/register-clinic/",
     RESET_PASSWORD: "/auth/reset-password/",
     REFRESH_TOKEN: "/auth/refresh/",
   },

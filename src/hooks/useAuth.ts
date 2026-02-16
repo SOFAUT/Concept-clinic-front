@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { authService } from '../core/http/services/authService'
 import { useAuthContext } from '../app/providers/AuthProvider'
+import type { RegisterClinicPayload } from '../interfaces/authInterfaces'
 
 export function useAuth() {
   const { setCredentials, logout, accessToken, refreshToken, user } = useAuthContext()
@@ -37,6 +38,28 @@ export function useAuth() {
     }
   }
 
+  const loginClinic = async ({ cnpj, password }: { cnpj: string; password: string }) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await authService.loginClinic({ cnpj, password })
+      if (response?.data?.access && response?.data?.refresh && response?.data?.user) {
+        setCredentials({
+          accessToken: response.data.access,
+          refreshToken: response.data.refresh,
+          user: response.data.user
+        })
+      } else {
+        throw new Error('Resposta inválida do servidor')
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao fazer login')
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const register = async ({ first_name, last_name, email, password, password2 }: { first_name: string; last_name: string; email: string; password: string; password2: string }) => {
     setLoading(true)
     setError(null)
@@ -65,10 +88,35 @@ export function useAuth() {
       setLoading(false)
     }
   }
+
+  const registerClinic = async (payload: RegisterClinicPayload) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await authService.registerClinic(payload)
+      if (response?.data?.access && response?.data?.refresh && response?.data?.user) {
+        setCredentials({
+          accessToken: response.data.access,
+          refreshToken: response.data.refresh,
+          user: response.data.user
+        })
+      } else {
+        throw new Error('Resposta inválida do servidor')
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao cadastrar clínica')
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return {
     login,
+    loginClinic,
     logout,
     register,
+    registerClinic,
     accessToken,
     refreshToken,
     user,

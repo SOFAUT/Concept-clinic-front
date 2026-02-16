@@ -173,6 +173,30 @@ O resultado ficará na pasta `dist/`.
 
 ---
 
+pages/
+│
+├── authPages/                    [Páginas de Autenticação]
+│   ├── Login.tsx                    → Formulário de login
+│   └── Register.tsx                 → Formulário de registro
+│
+├── adminPages/                   [Páginas do Administrador]
+│   ├── Dashboard.tsx                → Métricas gerais
+│   └── ClinicsManagement.tsx        → Gestão de clínicas
+│
+├── clinicPages/                  [Páginas da Clínica]
+│   ├── Dashboard.tsx                → Dashboard da clínica
+│   ├── Appointments.tsx             → Gestão de agendamentos
+│   ├── Patients.tsx                 → Gestão de pacientes
+│   └── Procedures.tsx               → Gestão de procedimentos
+│
+├── patientPages/                 [Páginas do Paciente]
+│   ├── Dashboard.tsx                → Dashboard pessoal
+│   ├── MyAppointments.tsx           → Meus agendamentos
+│   └── Profile.tsx                  → Perfil do usuário
+│
+└── notFound/
+    └── NotFound.tsx                 → Página 404
+
 ## Licença
 
 Este projeto está licenciado sob a [MIT License](https://opensource.org/licenses/MIT).

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico - Concept Clinic</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1976d2; }
+        h2 { color: #333; margin-top: 0; }
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Diagnóstico do Sistema</h1>
+    
+    <div class="card">
+        <h2>✅ Servidor Funcionando</h2>
+        <p class="success">Se você está vendo esta página, o servidor Vite está rodando corretamente!</p>
+        <p><strong>URL Atual:</strong> <span id="currentUrl"></span></p>
+    </div>
+
+    <div class="card">
+        <h2>🔍 Informações do Navegador</h2>
+        <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
+        <p><strong>Largura da Tela:</strong> <span id="screenWidth"></span>px</p>
+        <p><strong>LocalStorage Disponível:</strong> <span id="storageAvailable"></span></p>
+    </div>
+
+    <div class="card">
+        <h2>📦 Redux Persist</h2>
+        <p><strong>Estado salvo:</strong> <span id="persistStatus"></span></p>
+        <pre id="persistData"></pre>
+        <button onclick="clearStorage()">Limpar LocalStorage</button>
+        <button onclick="checkStorage()">Verificar Novamente</button>
+    </div>
+
+    <div class="card">
+        <h2>🧪 Testes de Navegação</h2>
+        <p>Clique nos botões para testar as rotas:</p>
+        <button onclick="testRoute('/')">Testar Rota Raiz (/)</button>
+        <button onclick="testRoute('/login')">Testar Login</button>
+        <button onclick="testRoute('/clinic')">Testar Dashboard Clínica</button>
+    </div>
+
+    <div class="card">
+        <h2>📋 Logs do Console</h2>
+        <p>Abra o DevTools (F12) e verifique se há erros na aba Console.</p>
+        <button onclick="testConsole()">Testar Console</button>
+        <pre id="consoleLog"></pre>
+    </div>
+
+    <div class="card">
+        <h2>🚀 Próximos Passos</h2>
+        <ol>
+            <li>Se esta página carregou, o servidor está OK</li>
+            <li>Clique em "Limpar LocalStorage" para resetar dados</li>
+            <li>Acesse: <a href="http://localhost:5100/login" target="_blank">http://localhost:5100/login</a></li>
+            <li>Faça login com: <code>clinica@clinica.com</code> / <code>123456</code></li>
+        </ol>
+    </div>
+
+    <script>
+        // Preencher informações
+        document.getElementById('currentUrl').textContent = window.location.href;
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+        document.getElementById('screenWidth').textContent = window.innerWidth;
+        document.getElementById('storageAvailable').textContent = 
+            typeof(Storage) !== "undefined" ? "✅ Sim" : "❌ Não";
+
+        // Verificar Redux Persist
+        function checkStorage() {
+            try {
+                const persistData = localStorage.getItem('persist:root');
+                if (persistData) {
+                    document.getElementById('persistStatus').innerHTML = 
+                        '<span class="success">✅ Dados encontrados</span>';
+                    document.getElementById('persistData').textContent = 
+                        JSON.stringify(JSON.parse(persistData), null, 2);
+                } else {
+                    document.getElementById('persistStatus').innerHTML = 
+                        '<span class="warning">⚠️ Nenhum dado salvo</span>';
+                    document.getElementById('persistData').textContent = 
+                        'LocalStorage vazio (usuário não logado)';
+                }
+            } catch (error) {
+                document.getElementById('persistStatus').innerHTML = 
+                    '<span class="error">❌ Erro ao ler</span>';
+                document.getElementById('persistData').textContent = error.message;
+            }
+        }
+
+        // Limpar localStorage
+        function clearStorage() {
+            if (confirm('Tem certeza que deseja limpar todos os dados salvos?')) {
+                localStorage.clear();
+                sessionStorage.clear();
+                alert('✅ LocalStorage limpo! Recarregue a página.');
+                checkStorage();
+            }
+        }
+
+        // Testar rota
+        function testRoute(route) {
+            window.location.href = route;
+        }
+
+        // Testar console
+        function testConsole() {
+            console.log('✅ Console funcionando!');
+            console.warn('⚠️ Aviso de teste');
+            console.error('❌ Erro de teste (não é um erro real)');
+            document.getElementById('consoleLog').textContent = 
+                '✅ Logs enviados ao console! Abra o DevTools (F12) para ver.';
+        }
+
+        // Executar verificações ao carregar
+        checkStorage();
+
+        // Log de diagnóstico
+        console.log('%c🔧 DIAGNÓSTICO DO SISTEMA', 'color: #1976d2; font-size: 20px; font-weight: bold;');
+        console.log('📍 URL:', window.location.href);
+        console.log('🌐 User Agent:', navigator.userAgent);
+        console.log('💾 LocalStorage disponível:', typeof(Storage) !== "undefined");
+        console.log('📦 Redux Persist:', localStorage.getItem('persist:root') ? 'Dados encontrados' : 'Vazio');
+        console.log('%cSe você está vendo isto, o JavaScript está funcionando!', 'color: #4caf50; font-weight: bold;');
+    </script>
+</body>
+</html>
+
+
+

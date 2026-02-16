@@ -7,10 +7,9 @@
     },
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
-
   },
-    "references": [
+  "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
-  ]  
+  ]
 }

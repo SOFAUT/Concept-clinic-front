@@ -1,8 +1,11 @@
 import {
   type LoginPayload,
+  type LoginClinicPayload,
   type RegisterPayload,
+  type RegisterClinicPayload,
   type LoginResponse,
   type RegisterResponse,
+  type RegisterClinicResponse,
   type RefreshTokenPayload,
   type RefreshTokenResponse,
 } from "../../../interfaces/authInterfaces";
@@ -34,6 +37,15 @@ export const authService = {
     return httpClient.post<LoginResponse>(API_URL, ENDPOINTS.AUTH.LOGIN, payload);
   },
 
+  loginClinic: async (payload: LoginClinicPayload) => {
+    if (USE_MOCK) {
+      console.log('🔧 Usando autenticação MOCK para login clínica');
+      const data = await mockAuth.loginClinic(payload);
+      return { status: 200, message: 'Login realizado com sucesso', data };
+    }
+    return httpClient.post<LoginResponse>(API_URL, ENDPOINTS.AUTH.LOGIN_CLINIC, payload);
+  },
+
   register: async (payload: RegisterPayload) => {
     if (USE_MOCK) {
       console.log('🔧 Usando registro MOCK');
@@ -46,6 +58,15 @@ export const authService = {
       ENDPOINTS.AUTH.REGISTER,
       payload
     );
+  },
+
+  registerClinic: async (payload: RegisterClinicPayload) => {
+    if (USE_MOCK) {
+      console.log('🔧 Usando registro MOCK para clínica');
+      const data = await mockAuth.registerClinic(payload);
+      return { status: 201, message: 'Clínica cadastrada com sucesso', data };
+    }
+    return httpClient.post<RegisterClinicResponse>(API_URL, ENDPOINTS.AUTH.REGISTER_CLINIC, payload);
   },
 
   refreshToken: async (payload: RefreshTokenPayload) => {

@@ -5,7 +5,9 @@ import { AuthMiddleware } from "../../core/middleware/AuthMiddleware";
 import AppLayout from "../../components/layout/AppLayout";
 import AuthLayout from "../../components/layout/AuthLayout";
 import Login from "../../pages/authPages/Login";
+import LoginClinic from "../../pages/authPages/LoginClinic";
 import Register from "../../pages/authPages/Register";
+import RegisterClinic from "../../pages/authPages/RegisterClinic";
 
 // Admin Pages
 import AdminDashboard from "../../pages/adminPages/Dashboard";
@@ -19,7 +21,9 @@ import Procedures from "../../pages/clinicPages/Procedures";
 
 // Patient Pages
 import PatientDashboard from "../../pages/patientPages/Dashboard";
+import PatientHistory from "../../pages/patientPages/History";
 import MyAppointments from "../../pages/patientPages/MyAppointments";
+import PaymentDashboard from "../../pages/patientPages/PaymentDashboard";
 import Profile from "../../pages/patientPages/Profile";
 
 // Common Components
@@ -27,6 +31,9 @@ import RoleBasedRedirect from "../../components/common/RoleBasedRedirect";
 
 export const AppRoutes = () => (
   <Routes>
+    {/* Home redirect based on role - OUTSIDE AuthMiddleware */}
+    <Route path={APP_ROUTES.HOME} element={<RoleBasedRedirect />} />
+
     {/* Auth routes */}
     <Route
       path={APP_ROUTES.LOGIN}
@@ -37,10 +44,26 @@ export const AppRoutes = () => (
       }
     />
     <Route
+      path={APP_ROUTES.LOGIN_CLINIC}
+      element={
+        <AuthLayout>
+          <LoginClinic />
+        </AuthLayout>
+      }
+    />
+    <Route
       path={APP_ROUTES.REGISTER}
       element={
         <AuthLayout>
           <Register />
+        </AuthLayout>
+      }
+    />
+    <Route
+      path={APP_ROUTES.REGISTER_CLINIC}
+      element={
+        <AuthLayout>
+          <RegisterClinic />
         </AuthLayout>
       }
     />
@@ -66,14 +89,12 @@ export const AppRoutes = () => (
       {/* Patient Routes */}
       <Route path={APP_ROUTES.PATIENT.DASHBOARD} element={<PatientDashboard />} />
       <Route path={APP_ROUTES.PATIENT.APPOINTMENTS} element={<MyAppointments />} />
-      <Route path={APP_ROUTES.PATIENT.HISTORY} element={<PatientDashboard />} />
+      <Route path={APP_ROUTES.PATIENT.HISTORY} element={<PatientHistory />} />
+      <Route path={APP_ROUTES.PATIENT.PAYMENTS} element={<PaymentDashboard />} />
       <Route path={APP_ROUTES.PATIENT.PROFILE} element={<Profile />} />
-
-      {/* Home redirect based on role */}
-      <Route path={APP_ROUTES.HOME} element={<RoleBasedRedirect />} />
-      
-      {/* 404 */}
-      <Route path={APP_ROUTES.NOTFOUND} element={<NotFound />} />
     </Route>
+
+    {/* 404 - Deve ser a última rota */}
+    <Route path={APP_ROUTES.NOTFOUND} element={<NotFound />} />
   </Routes>
 );
