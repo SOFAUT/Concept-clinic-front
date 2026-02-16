@@ -1,5 +1,16 @@
 // Mock de autenticação para desenvolvimento sem backend
-import type { LoginPayload, RegisterPayload, LoginResponse, RegisterResponse } from '../../interfaces/authInterfaces';
+import type {
+  LoginPayload,
+  LoginClinicPayload,
+  RegisterPayload,
+  RegisterClinicPayload,
+  LoginResponse,
+  RegisterResponse,
+} from '../../interfaces/authInterfaces';
+
+const onlyDigits = (s: string) => s.replace(/\D/g, '');
+
+const MOCK_CLINICS_KEY = 'mock_clinics';
 
 // Usuários mock para teste
 const MOCK_USERS = [
@@ -17,6 +28,7 @@ const MOCK_USERS = [
     last_name: 'Teste',
     email: 'clinica@clinica.com',
     password: '123456',
+    cnpj: '12345678000190', // CNPJ para login clínica (sem formatação)
     role: 'clinic'
   },
   {
@@ -66,6 +78,33 @@ const saveUsers = (users: any[]) => {
   localStorage.setItem('mock_users', JSON.stringify(users));
 };
 
+// Carrega clínicas cadastradas do localStorage
+const loadClinics = (): any[] => {
+  const stored = localStorage.getItem(MOCK_CLINICS_KEY);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+// Salva clínicas no localStorage
+const saveClinics = (clinics: any[]) => {
+  localStorage.setItem(MOCK_CLINICS_KEY, JSON.stringify(clinics));
+};
+
+// Converte registro de clínica no formato User (para Redux/sessão)
+const clinicToUser = (clinic: any) => ({
+  id: clinic.id,
+  first_name: clinic.nomeFantasia || clinic.nomeEmpresa || 'Clínica',
+  last_name: clinic.nomeEmpresa || '',
+  email: /@/.test(clinic.contato || '') ? clinic.contato : `${onlyDigits(clinic.cnpj)}@clinica.local`,
+  role: 'clinic'
+});
+
 export const mockAuth = {
   async login(payload: LoginPayload): Promise<LoginResponse> {
     console.log('[mockAuth] Tentando login com:', payload.email);
@@ -94,6 +133,71 @@ export const mockAuth = {
     
     console.log('[mockAuth] Login bem-sucedido! Retornando:', response);
     return response;
+  },
+
+  async loginClinic(payload: LoginClinicPayload): Promise<LoginResponse> {
+    console.log('[mockAuth] Tentando login clínica com CNPJ');
+    await delay(500);
+
+    const cnpjDigits = onlyDigits(payload.cnpj);
+
+    // 1) Tenta clínicas cadastradas no localStorage (mock_clinics)
+    const clinics = loadClinics();
+    const clinic = clinics.find(
+      (c: any) => onlyDigits(c.cnpj) === cnpjDigits && c.password === payload.password
+    );
+    if (clinic) {
+      const user = clinicToUser(clinic);
+      return {
+        access: generateToken(),
+        refresh: generateToken(),
+        user
+      };
+    }
+
+    // 2) Fallback: usuários mock (clínica de teste)
+    const users = loadUsers();
+    const clinicUser = users.find(
+      (u: any) =>
+        u.role === 'clinic' &&
+        u.password === payload.password &&
+        (!u.cnpj || onlyDigits(u.cnpj) === cnpjDigits)
+    );
+    if (!clinicUser) {
+      throw new Error('CNPJ ou senha incorretos');
+    }
+    const { password: _p, cnpj: _c, ...userWithoutSensitive } = clinicUser;
+    return {
+      access: generateToken(),
+      refresh: generateToken(),
+      user: userWithoutSensitive
+    };
+  },
+
+  async registerClinic(payload: RegisterClinicPayload): Promise<LoginResponse> {
+    await delay(500);
+
+    const clinics = loadClinics();
+    const cnpjDigits = onlyDigits(payload.cnpj);
+
+    if (clinics.some((c: any) => onlyDigits(c.cnpj) === cnpjDigits)) {
+      throw new Error('Já existe uma clínica cadastrada com este CNPJ');
+    }
+
+    const clinic = {
+      id: clinics.length + 1,
+      ...payload,
+      role: 'clinic'
+    };
+    clinics.push(clinic);
+    saveClinics(clinics);
+
+    const user = clinicToUser(clinic);
+    return {
+      access: generateToken(),
+      refresh: generateToken(),
+      user
+    };
   },
 
   async register(payload: RegisterPayload): Promise<RegisterResponse> {
@@ -146,8 +250,8 @@ export const mockAuth = {
 // Função helper para limpar dados mock (útil para testes)
 export const resetMockData = () => {
   localStorage.removeItem('mock_users');
-  console.log('✅ Dados mock resetados. Usuários padrão restaurados.');
-  // Recarrega a página para reinicializar
+  localStorage.removeItem(MOCK_CLINICS_KEY);
+  console.log('✅ Dados mock resetados. Usuários e clínicas restaurados.');
   setTimeout(() => window.location.reload(), 100);
 };
 
@@ -166,6 +270,7 @@ console.log('🔐 Sistema de autenticação MOCK ativado!');
 const initUsers = loadUsers();
 console.log('📝 Usuários disponíveis para teste:', initUsers.length);
 console.log('   Admin: admin@admin.com / 123456');
-console.log('   Clínica: clinica@clinica.com / 123456');
+console.log('   Clínica (e-mail): clinica@clinica.com / 123456');
+console.log('   Clínica (CNPJ): 12.345.678/0001-90 / 123456');
 console.log('   Paciente: paciente@paciente.com / 123456');
 

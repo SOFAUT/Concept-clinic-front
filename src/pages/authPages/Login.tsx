@@ -97,8 +97,14 @@ export default function Login() {
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
             <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Button variant="text" color="primary" fullWidth sx={{ display: 'block', mb: 0.5 }} onClick={() => navigate(APP_ROUTES.LOGIN_CLINIC)}>
+                Entrar como clínica
+              </Button>
               <Button variant="text" color="primary" onClick={() => navigate(APP_ROUTES.REGISTER)}>
-                Não tem uma conta? Cadastre-se
+                Cadastre-se como paciente
+              </Button>
+              <Button variant="text" color="primary" onClick={() => navigate(APP_ROUTES.REGISTER_CLINIC)}>
+                Cadastre-se como clínica
               </Button>
             </Box>
           </form>
