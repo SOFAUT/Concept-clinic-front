@@ -10,22 +10,22 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 
 const benefits = [
   {
-    icon: <CalendarMonthIcon sx={{ fontSize: 32, color: 'primary.main' }} />,
+    icon: <CalendarMonthIcon sx={{ fontSize: 32, color: '#A3AED0' }} />,
     title: 'Agendamentos Fáceis',
     description: 'Reserve suas consultas com apenas alguns cliques, em qualquer hora e lugar.',
   },
   {
-    icon: <PaymentIcon sx={{ fontSize: 32, color: 'primary.main' }} />,
+    icon: <PaymentIcon sx={{ fontSize: 32, color: '#A3AED0' }} />,
     title: 'Pagamentos Seguros',
     description: 'Realize seus pagamentos de forma segura com apoio de sistemas modernos.',
   },
   {
-    icon: <HistoryIcon sx={{ fontSize: 32, color: 'primary.main' }} />,
+    icon: <HistoryIcon sx={{ fontSize: 32, color: '#A3AED0' }} />,
     title: 'Histórico Completo',
     description: 'Acompanhe todo o seu histórico de procedimentos e tratamentos em um único lugar.',
   },
   {
-    icon: <SecurityIcon sx={{ fontSize: 32, color: 'primary.main' }} />,
+    icon: <SecurityIcon sx={{ fontSize: 32, color: '#A3AED0' }} />,
     title: 'Dados Protegidos',
     description: 'Seus dados pessoais são protegidos com as mais altas medidas de segurança.',
   },
@@ -69,8 +69,8 @@ export default function OnboardingPatient() {
       {/* Hero Section */}
       <Box
         sx={{
-          bgcolor: 'primary.main',
-          color: 'white',
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? '#1E232F' : 'primary.main',
+          color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'white',
           py: { xs: 6, md: 8 },
           textAlign: 'center',
         }}

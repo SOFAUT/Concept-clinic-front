@@ -10,22 +10,22 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 
 const benefits = [
   {
-    icon: <PeopleIcon sx={{ fontSize: 32, color: 'secondary.main' }} />,
+    icon: <PeopleIcon sx={{ fontSize: 32, color: '#A3AED0' }} />,
     title: 'Gerencie Seus Pacientes',
     description: 'Organize e acompanhe todos os seus pacientes em uma plataforma centralizada.',
   },
   {
-    icon: <PaymentIcon sx={{ fontSize: 32, color: 'secondary.main' }} />,
+    icon: <PaymentIcon sx={{ fontSize: 32, color: '#A3AED0' }} />,
     title: 'Sistema de Pagamentos Moderno',
     description: 'Facilite os pagamentos de seus clientes com nossa nova solução segura e eficiente.',
   },
   {
-    icon: <AnalyticsIcon sx={{ fontSize: 32, color: 'secondary.main' }} />,
+    icon: <AnalyticsIcon sx={{ fontSize: 32, color: '#A3AED0' }} />,
     title: 'Relatórios e Analytics',
     description: 'Acompanhe métricas importantes e tome decisões com base em dados reais.',
   },
   {
-    icon: <SecurityIcon sx={{ fontSize: 32, color: 'secondary.main' }} />,
+    icon: <SecurityIcon sx={{ fontSize: 32, color: '#A3AED0' }} />,
     title: 'Conformidade Legal',
     description: 'Sistema desenvolvido em conformidade com as regulamentações de saúde.',
   },
@@ -69,8 +69,8 @@ export default function OnboardingClinic() {
       {/* Hero Section */}
       <Box
         sx={{
-          bgcolor: 'secondary.main',
-          color: 'white',
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? '#1E232F' : 'secondary.main',
+          color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'white',
           py: { xs: 6, md: 8 },
           textAlign: 'center',
         }}

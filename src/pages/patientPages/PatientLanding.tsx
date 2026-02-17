@@ -42,7 +42,7 @@ function ServiceCard({ title, description, imageSrc, imageAlt }: ServiceCardProp
         sx={{
           width: '100%',
           height: 200,
-          bgcolor: 'grey.200',
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.paper' : 'grey.200',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -119,7 +119,9 @@ export default function PatientLanding() {
             left: 0,
             width: '100%',
             height: '100%',
-            bgcolor: 'rgba(23, 28, 41, 0.65)',
+            bgcolor: (theme) => theme.palette.mode === 'dark' 
+              ? 'rgba(22, 25, 30, 0.6)' 
+              : 'rgba(23, 28, 41, 0.65)',
             zIndex: 1,
           }}
         />

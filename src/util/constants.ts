@@ -1,5 +1,4 @@
 import { t } from "i18next";
-import { COLORS } from "../assets/styles/colors";
 
 // Exporta as cores para uso em toda a aplicação
 export { COLORS } from "../assets/styles/colors";

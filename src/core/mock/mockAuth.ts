@@ -6,6 +6,7 @@ import type {
   RegisterClinicPayload,
   LoginResponse,
   RegisterResponse,
+  User,
 } from '../../interfaces/authInterfaces';
 
 const onlyDigits = (s: string) => s.replace(/\D/g, '');
@@ -61,7 +62,7 @@ const loadUsers = () => {
       const parsed = JSON.parse(stored);
       console.log('[loadUsers] Usuários carregados do localStorage:', parsed.length);
       return parsed;
-    } catch (error) {
+    } catch {
       console.warn('[loadUsers] Erro ao parsear localStorage, usando padrão');
       // Salva os usuários padrão no localStorage
       saveUsers(MOCK_USERS);
@@ -76,12 +77,12 @@ const loadUsers = () => {
 };
 
 // Salva usuários no localStorage
-const saveUsers = (users: any[]) => {
+const saveUsers = (users: unknown[]) => {
   localStorage.setItem('mock_users', JSON.stringify(users));
 };
 
 // Carrega clínicas cadastradas do localStorage
-const loadClinics = (): any[] => {
+const loadClinics = (): unknown[] => {
   const stored = localStorage.getItem(MOCK_CLINICS_KEY);
   if (stored) {
     try {
@@ -94,18 +95,21 @@ const loadClinics = (): any[] => {
 };
 
 // Salva clínicas no localStorage
-const saveClinics = (clinics: any[]) => {
+const saveClinics = (clinics: unknown[]) => {
   localStorage.setItem(MOCK_CLINICS_KEY, JSON.stringify(clinics));
 };
 
 // Converte registro de clínica no formato User (para Redux/sessão)
-const clinicToUser = (clinic: any) => ({
-  id: clinic.id,
-  first_name: clinic.nomeFantasia || clinic.nomeEmpresa || 'Clínica',
-  last_name: clinic.nomeEmpresa || '',
-  email: /@/.test(clinic.contato || '') ? clinic.contato : `${onlyDigits(clinic.cnpj)}@clinica.local`,
-  role: 'clinic'
-});
+const clinicToUser = (clinic: unknown): User => {
+  const c = clinic as Record<string, unknown>;
+  return {
+    id: c.id as number,
+    first_name: (c.nomeFantasia || c.nomeEmpresa || 'Clínica') as string,
+    last_name: (c.nomeEmpresa || '') as string,
+    email: /@/.test((c.contato || '') as string) ? (c.contato as string) : `${onlyDigits(c.cnpj as string)}@clinica.local`,
+    role: (c.role as string) || 'clinic',
+  };
+};
 
 export const mockAuth = {
   async login(payload: LoginPayload): Promise<LoginResponse> {
@@ -113,10 +117,13 @@ export const mockAuth = {
     await delay(500); // Simula delay de rede
 
     const users = loadUsers();
-    console.log('[mockAuth] Usuários disponíveis:', users.map(u => u.email));
+    console.log('[mockAuth] Usuários disponíveis:', (users as Array<Record<string, unknown>>).map(u => u.email));
     
     const user = users.find(
-      (u: any) => u.email === payload.email && u.password === payload.password
+      (u: unknown) => {
+        const user = u as Record<string, unknown>;
+        return user.email === payload.email && user.password === payload.password;
+      }
     );
 
     if (!user) {
@@ -125,12 +132,13 @@ export const mockAuth = {
     }
 
     // Remove a senha do retorno
-    const { password, ...userWithoutPassword } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _pwd, ...userWithoutPassword } = user;
 
     const response = {
       access: generateToken(),
       refresh: generateToken(),
-      user: userWithoutPassword
+      user: userWithoutPassword as User
     };
     
     console.log('[mockAuth] Login bem-sucedido! Retornando:', response);
@@ -145,9 +153,10 @@ export const mockAuth = {
 
     // 1) Tenta clínicas cadastradas no localStorage (mock_clinics)
     const clinics = loadClinics();
-    const clinic = clinics.find(
-      (c: any) => onlyDigits(c.cnpj) === cnpjDigits && c.password === payload.password
-    );
+    const clinic = clinics.find((c: unknown) => {
+      const clinic = c as Record<string, unknown>;
+      return onlyDigits(clinic.cnpj as string) === cnpjDigits && clinic.password === payload.password;
+    });
     if (clinic) {
       const user = clinicToUser(clinic);
       return {
@@ -159,20 +168,28 @@ export const mockAuth = {
 
     // 2) Fallback: usuários mock (clínica de teste)
     const users = loadUsers();
-    const clinicUser = users.find(
-      (u: any) =>
-        u.role === 'clinic' &&
-        u.password === payload.password &&
-        (!u.cnpj || onlyDigits(u.cnpj) === cnpjDigits)
-    );
+    const clinicUser = users.find((u: unknown) => {
+      const user = u as Record<string, unknown>;
+      return user.role === 'clinic' &&
+        user.password === payload.password &&
+        (!user.cnpj || onlyDigits(user.cnpj as string) === cnpjDigits);
+    });
     if (!clinicUser) {
       throw new Error('CNPJ ou senha incorretos');
     }
-    const { password: _p, cnpj: _c, ...userWithoutSensitive } = clinicUser;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _password, cnpj: _cnpj } = clinicUser as Record<string, unknown>;
+    const user: User = {
+      id: (clinicUser as Record<string, unknown>).id as number,
+      first_name: (clinicUser as Record<string, unknown>).first_name as string,
+      last_name: (clinicUser as Record<string, unknown>).last_name as string,
+      email: (clinicUser as Record<string, unknown>).email as string,
+      role: (clinicUser as Record<string, unknown>).role as string,
+    };
     return {
       access: generateToken(),
       refresh: generateToken(),
-      user: userWithoutSensitive
+      user
     };
   },
 
@@ -182,7 +199,10 @@ export const mockAuth = {
     const clinics = loadClinics();
     const cnpjDigits = onlyDigits(payload.cnpj);
 
-    if (clinics.some((c: any) => onlyDigits(c.cnpj) === cnpjDigits)) {
+    if (clinics.some((c: unknown) => {
+      const clinic = c as Record<string, unknown>;
+      return onlyDigits(clinic.cnpj as string) === cnpjDigits;
+    })) {
       throw new Error('Já existe uma clínica cadastrada com este CNPJ');
     }
 
@@ -194,7 +214,7 @@ export const mockAuth = {
     clinics.push(clinic);
     saveClinics(clinics);
 
-    const user = clinicToUser(clinic);
+    const user = clinicToUser(clinic) as unknown as User;
     return {
       access: generateToken(),
       refresh: generateToken(),
@@ -208,7 +228,10 @@ export const mockAuth = {
     const users = loadUsers();
     
     // Verifica se email já existe
-    if (users.find((u: any) => u.email === payload.email)) {
+    if (users.find((u: unknown) => {
+      const user = u as Record<string, unknown>;
+      return user.email === payload.email;
+    })) {
       throw new Error('Email já cadastrado');
     }
 
@@ -232,16 +255,18 @@ export const mockAuth = {
     users.push(newUser);
     saveUsers(users);
 
-    const { password, ...userWithoutPassword } = newUser;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _password, ...userWithoutPassword } = newUser;
 
     return {
       ...userWithoutPassword,
       access: generateToken(),
       refresh: generateToken()
-    };
+    } as RegisterResponse;
   },
 
-  async refreshToken(refresh: string): Promise<{ access: string; refresh: string }> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async refreshToken(_refresh: string): Promise<{ access: string; refresh: string }> {
     await delay(300);
     
     return {

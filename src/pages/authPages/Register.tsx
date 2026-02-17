@@ -45,9 +45,10 @@ export default function Register() {
     try {
       await register({ first_name: firstName, last_name: lastName, email, password, password2 })
       // A navegação acontece via useEffect quando o user é atualizado
-    } catch (err: any) {
+    } catch (err: unknown) {
       registerAttempted.current = false
-      setFormError(err.message || 'Erro ao cadastrar')
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao cadastrar';
+      setFormError(errorMessage)
     }
   }
 

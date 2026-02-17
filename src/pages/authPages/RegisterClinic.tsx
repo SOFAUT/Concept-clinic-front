@@ -106,7 +106,8 @@ export default function RegisterClinic() {
 
     setLoading(true);
     try {
-      const { password2: _, ...payload } = form;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password2: _password2, ...payload } = form;
       await registerClinic(payload);
       navigate(APP_ROUTES.CLINIC.DASHBOARD);
     } catch (err: unknown) {
@@ -130,7 +131,7 @@ export default function RegisterClinic() {
                 Dados da empresa
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="CNPJ"
                     value={form.cnpj}
@@ -142,7 +143,7 @@ export default function RegisterClinic() {
                     inputProps={{ inputMode: "numeric", maxLength: 18 }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="Data abertura"
                     type="date"
@@ -154,7 +155,7 @@ export default function RegisterClinic() {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     select
                     label="Tipo"
@@ -171,7 +172,7 @@ export default function RegisterClinic() {
                     ))}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="Nome fantasia"
                     value={form.nomeFantasia}
@@ -181,7 +182,7 @@ export default function RegisterClinic() {
                     margin="normal"
                   />
                 </Grid>
-                <Grid item xs={12}>
+                                <Grid sx={{ xs: 12 }}>
                   <TextField
                     label="Razão social (nome empresa)"
                     value={form.nomeEmpresa}
@@ -191,7 +192,7 @@ export default function RegisterClinic() {
                     margin="normal"
                   />
                 </Grid>
-                <Grid item xs={12}>
+                                <Grid sx={{ xs: 12 }}>
                   <TextField
                     label="Atividade principal"
                     value={form.atividadePrincipal}
@@ -200,7 +201,7 @@ export default function RegisterClinic() {
                     margin="normal"
                   />
                 </Grid>
-                <Grid item xs={12}>
+                                <Grid sx={{ xs: 12 }}>
                   <TextField
                     label="Atividade secundária"
                     value={form.atividadeSecundaria}
@@ -215,7 +216,7 @@ export default function RegisterClinic() {
                 Endereço
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                                <Grid sx={{ xs: 12 }}>
                   <TextField
                     label="Endereço"
                     value={form.endereco}
@@ -225,7 +226,7 @@ export default function RegisterClinic() {
                     margin="normal"
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                                <Grid sx={{ xs: 12, sm: 4 }}>
                   <TextField
                     label="Número"
                     value={form.numero}
@@ -235,7 +236,7 @@ export default function RegisterClinic() {
                     margin="normal"
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                                <Grid sx={{ xs: 12, sm: 4 }}>
                   <TextField
                     label="Complemento"
                     value={form.complemento}
@@ -244,7 +245,7 @@ export default function RegisterClinic() {
                     margin="normal"
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                                <Grid sx={{ xs: 12, sm: 4 }}>
                   <TextField
                     label="CEP"
                     value={form.cep}
@@ -256,7 +257,7 @@ export default function RegisterClinic() {
                     inputProps={{ inputMode: "numeric", maxLength: 9 }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="Bairro"
                     value={form.bairro}
@@ -266,7 +267,7 @@ export default function RegisterClinic() {
                     margin="normal"
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                                <Grid sx={{ xs: 12, sm: 4 }}>
                   <TextField
                     label="Município"
                     value={form.municipio}
@@ -276,7 +277,7 @@ export default function RegisterClinic() {
                     margin="normal"
                   />
                 </Grid>
-                <Grid item xs={12} sm={2}>
+                                <Grid sx={{ xs: 12, sm: 2 }}>
                   <TextField
                     select
                     label="UF"
@@ -299,7 +300,7 @@ export default function RegisterClinic() {
                 Situação e contato
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     select
                     label="Situação"
@@ -316,7 +317,7 @@ export default function RegisterClinic() {
                     ))}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="Contato"
                     value={form.contato}
@@ -327,7 +328,7 @@ export default function RegisterClinic() {
                     placeholder="Nome ou e-mail do responsável"
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="Telefone"
                     value={form.telefone}
@@ -339,7 +340,7 @@ export default function RegisterClinic() {
                     inputProps={{ inputMode: "tel", maxLength: 15 }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="Senha"
                     type={showPassword ? "text" : "password"}
@@ -360,7 +361,7 @@ export default function RegisterClinic() {
                     }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                                <Grid sx={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="Confirmar senha"
                     type={showPassword ? "text" : "password"}
@@ -414,3 +415,4 @@ export default function RegisterClinic() {
     </Box>
   );
 }
+
