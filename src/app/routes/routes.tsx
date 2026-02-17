@@ -4,6 +4,7 @@ import NotFound from "../../pages/notFound/NotFound";
 import { AuthMiddleware } from "../../core/middleware/AuthMiddleware";
 import AppLayout from "../../components/layout/AppLayout";
 import AuthLayout from "../../components/layout/AuthLayout";
+import Home from "../../pages/Home";
 import Login from "../../pages/authPages/Login";
 import LoginClinic from "../../pages/authPages/LoginClinic";
 import Register from "../../pages/authPages/Register";
@@ -31,8 +32,8 @@ import RoleBasedRedirect from "../../components/common/RoleBasedRedirect";
 
 export const AppRoutes = () => (
   <Routes>
-    {/* Home redirect based on role - OUTSIDE AuthMiddleware */}
-    <Route path={APP_ROUTES.HOME} element={<RoleBasedRedirect />} />
+    {/* Home pública */}
+    <Route path={APP_ROUTES.HOME} element={<Home />} />
 
     {/* Auth routes */}
     <Route
