@@ -37,6 +37,8 @@ const MOCK_USERS = [
     last_name: 'Teste',
     email: 'paciente@paciente.com',
     password: '123456',
+    phone: '(11) 98765-4321',
+    cpf: '123.456.789-00',
     role: 'patient'
   }
 ];
@@ -222,6 +224,8 @@ export const mockAuth = {
       last_name: payload.last_name,
       email: payload.email,
       password: payload.password,
+      phone: '',
+      cpf: '',
       role: 'patient' // Novos usuários são pacientes por padrão
     };
 

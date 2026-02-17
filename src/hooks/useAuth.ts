@@ -25,6 +25,7 @@ export function useAuth() {
           user: response.data.user
         })
         console.log('[useAuth] Login bem-sucedido!')
+        return response.data.user
       } else {
         console.error('[useAuth] Resposta inválida:', response)
         throw new Error('Resposta inválida do servidor')
@@ -49,6 +50,7 @@ export function useAuth() {
           refreshToken: response.data.refresh,
           user: response.data.user
         })
+        return response.data.user
       } else {
         throw new Error('Resposta inválida do servidor')
       }
@@ -69,17 +71,19 @@ export function useAuth() {
       
       // Após registrar com sucesso, faz login automático
       if (response && response.data) {
+        const userData = {
+          id: response.data.id,
+          first_name: response.data.first_name,
+          last_name: response.data.last_name,
+          email: response.data.email,
+          role: response.data.role
+        }
         setCredentials({
           accessToken: response.data.access,
           refreshToken: response.data.refresh,
-          user: {
-            id: response.data.id,
-            first_name: response.data.first_name,
-            last_name: response.data.last_name,
-            email: response.data.email,
-            role: response.data.role
-          }
+          user: userData
         })
+        return userData
       }
     } catch (err: any) {
       setError(err.message || 'Erro ao cadastrar')
@@ -100,8 +104,9 @@ export function useAuth() {
           refreshToken: response.data.refresh,
           user: response.data.user
         })
+        return response.data.user
       } else {
-        throw new Error('Resposta inválida do servidor')
+        throw new Error('Respos inválida do servidor')
       }
     } catch (err: any) {
       setError(err?.message || 'Erro ao cadastrar clínica')

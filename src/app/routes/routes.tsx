@@ -21,11 +21,17 @@ import Patients from "../../pages/clinicPages/Patients";
 import Procedures from "../../pages/clinicPages/Procedures";
 
 // Patient Pages
+import PatientLanding from "../../pages/patientPages/PatientLanding";
 import PatientDashboard from "../../pages/patientPages/Dashboard";
 import PatientHistory from "../../pages/patientPages/History";
 import MyAppointments from "../../pages/patientPages/MyAppointments";
 import PaymentDashboard from "../../pages/patientPages/PaymentDashboard";
 import Profile from "../../pages/patientPages/Profile";
+
+// Onboarding Pages
+import ChooseRole from "../../pages/onboarding/ChooseRole";
+import OnboardingPatient from "../../pages/onboarding/OnboardingPatient";
+import OnboardingClinic from "../../pages/onboarding/OnboardingClinic";
 
 // Common Components
 import RoleBasedRedirect from "../../components/common/RoleBasedRedirect";
@@ -34,6 +40,11 @@ export const AppRoutes = () => (
   <Routes>
     {/* Home pública */}
     <Route path={APP_ROUTES.HOME} element={<Home />} />
+
+    {/* Onboarding routes */}
+    <Route path="/choose-role" element={<ChooseRole />} />
+    <Route path="/onboarding/patient" element={<OnboardingPatient />} />
+    <Route path="/onboarding/clinic" element={<OnboardingClinic />} />
 
     {/* Auth routes */}
     <Route
@@ -66,6 +77,16 @@ export const AppRoutes = () => (
         <AuthLayout>
           <RegisterClinic />
         </AuthLayout>
+      }
+    />
+
+    {/* Patient Landing (rota própria, sem sidebar) */}
+    <Route
+      path={APP_ROUTES.PATIENT.LANDING}
+      element={
+        <AuthMiddleware>
+          <PatientLanding />
+        </AuthMiddleware>
       }
     />
 

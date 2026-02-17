@@ -1,12 +1,12 @@
-import React, { useState } from 'react'
-import { Box, Typography, TextField, Button, Alert} from '@mui/material'
+import React, { useState, useEffect, useRef } from 'react'
+import { Box, Typography, TextField, Button, Alert } from '@mui/material'
 import AuthCard from '../../components/ui/cards/AuthCard'
 import { useAuth } from '../../hooks/useAuth'
 import { useNavigate } from 'react-router'
 import { APP_ROUTES } from '../../util/constants'
 
 export default function Register() {
-  const { register, loading, error } = useAuth()
+  const { register, loading, error, user } = useAuth()
   const navigate = useNavigate()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -14,6 +14,25 @@ export default function Register() {
   const [password, setPassword] = useState('')
   const [password2, setPassword2] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const registerAttempted = useRef(false)
+
+  // Redireciona quando o user muda após registro bem-sucedido
+  useEffect(() => {
+    if (user && registerAttempted.current) {
+      switch (user.role) {
+        case 'admin':
+          navigate(APP_ROUTES.ADMIN.DASHBOARD, { replace: true })
+          break
+        case 'clinic':
+          navigate(APP_ROUTES.CLINIC.DASHBOARD, { replace: true })
+          break
+        case 'patient':
+        default:
+          navigate(APP_ROUTES.PATIENT.DASHBOARD, { replace: true })
+          break
+      }
+    }
+  }, [user, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,11 +41,12 @@ export default function Register() {
       setFormError('As senhas não coincidem')
       return
     }
+    registerAttempted.current = true
     try {
       await register({ first_name: firstName, last_name: lastName, email, password, password2 })
-      // Após registro bem-sucedido, redireciona para home (que vai para dashboard do role)
-      navigate(APP_ROUTES.HOME)
+      // A navegação acontece via useEffect quando o user é atualizado
     } catch (err: any) {
+      registerAttempted.current = false
       setFormError(err.message || 'Erro ao cadastrar')
     }
   }

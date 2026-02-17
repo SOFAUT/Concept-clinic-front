@@ -18,7 +18,7 @@ export default function RoleBasedRedirect() {
           navigate(APP_ROUTES.CLINIC.DASHBOARD, { replace: true });
           break;
         case 'patient':
-          navigate(APP_ROUTES.PATIENT.DASHBOARD, { replace: true });
+          navigate(APP_ROUTES.PATIENT.LANDING, { replace: true });
           break;
         default:
           navigate(APP_ROUTES.LOGIN, { replace: true });

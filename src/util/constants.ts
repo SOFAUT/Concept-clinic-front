@@ -44,6 +44,7 @@ export const APP_ROUTES = {
   },
   
   PATIENT: {
+    LANDING: "/patient/welcome",
     DASHBOARD: "/patient",
     APPOINTMENTS: "/patient/appointments",
     HISTORY: "/patient/history",

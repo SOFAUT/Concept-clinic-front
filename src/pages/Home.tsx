@@ -34,14 +34,14 @@ function LandingHeader() {
         </Typography>
 
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button variant="text" onClick={() => navigate(APP_ROUTES.LOGIN)}>
-            Entrar como paciente
+          <Button variant="text" onClick={() => navigate("/choose-role")}>
+            Comece Agora
           </Button>
           <Button
             variant="contained"
-            onClick={() => navigate(APP_ROUTES.LOGIN_CLINIC)}
+            onClick={() => navigate("/choose-role")}
           >
-            Entrar como clínica
+            Entrar
           </Button>
         </Box>
       </Container>
@@ -72,6 +72,7 @@ function LandingFooter() {
 }
 
 export default function Home() {
+  const navigate = useNavigate();
   const [themeMode, setThemeMode] = useState<"light" | "dark">("light");
   const theme = useMemo(() => getTheme(themeMode), [themeMode]);
 
@@ -139,17 +140,19 @@ export default function Home() {
                 organizados em uma plataforma única.
               </Typography>
               <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                <Button variant="contained" size="large" onClick={() => {}}>
-                  Explorar funcionalidades
+                <Button 
+                  variant="contained" 
+                  size="large" 
+                  onClick={() => navigate("/choose-role")}
+                >
+                  Comece Agora
                 </Button>
                 <Button
                   variant="outlined"
                   size="large"
-                  onClick={() => {
-                    window.location.href = APP_ROUTES.LOGIN;
-                  }}
+                  onClick={() => navigate("/choose-role")}
                 >
-                  Já sou paciente
+                  Conheça mais
                 </Button>
               </Box>
             </Box>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -17,12 +17,26 @@ import { APP_ROUTES, VALIDATION_PATTERNS } from "../../util/constants";
 import { maskCnpj } from "../../util/masks";
 
 export default function LoginClinic() {
-  const { loginClinic, loading, error } = useAuth();
+  const { loginClinic, loading, error, user } = useAuth();
   const navigate = useNavigate();
   const [cnpj, setCnpj] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const loginAttempted = useRef(false);
+
+  // Redireciona quando o user muda após login bem-sucedido
+  useEffect(() => {
+    if (user && loginAttempted.current) {
+      if (user.role === 'clinic') {
+        navigate(APP_ROUTES.CLINIC.DASHBOARD, { replace: true });
+      } else if (user.role === 'admin') {
+        navigate(APP_ROUTES.ADMIN.DASHBOARD, { replace: true });
+      } else {
+        navigate(APP_ROUTES.PATIENT.DASHBOARD, { replace: true });
+      }
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,9 +45,10 @@ export default function LoginClinic() {
       setFormError("CNPJ inválido. Use o formato 00.000.000/0001-00");
       return;
     }
+    loginAttempted.current = true;
     try {
       await loginClinic({ cnpj, password });
-      navigate(APP_ROUTES.HOME);
+      // A navegação acontece via useEffect quando o user é atualizado
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Erro ao fazer login");
     }
