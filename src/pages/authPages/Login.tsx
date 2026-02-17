@@ -20,7 +20,7 @@ export default function Login() {
     setFormError(null)
     try {
       await login({ email, password })
-      navigate(APP_ROUTES.HOME)
+      navigate(APP_ROUTES.PATIENT.DASHBOARD)
     } catch (err: any) {
       setFormError(err.message || 'Erro ao fazer login')
     }

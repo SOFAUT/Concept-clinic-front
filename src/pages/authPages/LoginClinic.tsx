@@ -33,7 +33,7 @@ export default function LoginClinic() {
     }
     try {
       await loginClinic({ cnpj, password });
-      navigate(APP_ROUTES.HOME);
+      navigate(APP_ROUTES.CLINIC.DASHBOARD);
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Erro ao fazer login");
     }

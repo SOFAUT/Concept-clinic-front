@@ -4,7 +4,6 @@ import NotFound from "../../pages/notFound/NotFound";
 import { AuthMiddleware } from "../../core/middleware/AuthMiddleware";
 import AppLayout from "../../components/layout/AppLayout";
 import AuthLayout from "../../components/layout/AuthLayout";
-import Home from "../../pages/Home";
 import Login from "../../pages/authPages/Login";
 import LoginClinic from "../../pages/authPages/LoginClinic";
 import Register from "../../pages/authPages/Register";
@@ -32,8 +31,8 @@ import RoleBasedRedirect from "../../components/common/RoleBasedRedirect";
 
 export const AppRoutes = () => (
   <Routes>
-    {/* Home pública */}
-    <Route path={APP_ROUTES.HOME} element={<Home />} />
+    {/* Home pública + redirect por papel quando autenticado */}
+    <Route path={APP_ROUTES.HOME} element={<RoleBasedRedirect />} />
 
     {/* Auth routes */}
     <Route
