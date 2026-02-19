@@ -8,7 +8,7 @@ export const BRAND_COLORS = {
   // Cores primárias/destacadas
   PRIMARY: '#171C29',      // Azul escuro principal
   PRIMARY_LIGHT: '#323A50', // Azul escuro mais claro
-  SECONDARY: '#A3AED0',    // Azul acinzentado
+  SECONDARY: '#BB00E6',    // Roxo (onboarding paciente/clínica)
   
   // Cores de destaque
   ACCENT: '#E2B957',       // Dourado/amarelo
@@ -28,7 +28,7 @@ export const FUNCTIONAL_COLORS = {
   
   // Estados de warning/info
   WARNING: '#E2B957',      // Amarelo (mesmo do accent)
-  INFO: '#A3AED0',         // Azul (mesmo do secondary)
+  INFO: '#BB00E6',         // Roxo (mesmo do secondary)
 } as const;
 
 // Cores por contexto de uso
@@ -53,7 +53,7 @@ export const CONTEXT_COLORS = {
   
   // Bordas
   BORDER: {
-    PRIMARY: BRAND_COLORS.A3AED0,
+    PRIMARY: BRAND_COLORS.SECONDARY,
     LIGHT: BRAND_COLORS.GRAY,
     ACCENT: BRAND_COLORS.ACCENT,
   },
