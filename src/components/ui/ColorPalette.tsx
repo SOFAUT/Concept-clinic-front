@@ -32,7 +32,7 @@ export const ColorPalette: React.FC = () => {
       colors: [
         { name: 'WHITE', value: COLORS.WHITE },
         { name: 'GRAY', value: COLORS.GRAY },
-        { name: 'DARK', value: COLORS.DARK },
+        { name: 'DARK', value: COLORS.DARK.BACKGROUND.PRIMARY },
       ]
     }
   ];
@@ -51,12 +51,12 @@ export const ColorPalette: React.FC = () => {
           
           <Grid container spacing={2}>
             {section.colors.map((color) => (
-              <Grid item xs={12} sm={6} md={4} key={color.name}>
+                            <Grid key={color.name} sx={{ xs: 12, sm: 6, md: 4 }}>
                 <Paper
                   sx={{
                     p: 2,
                     textAlign: 'center',
-                    border: `1px solid ${COLORS.BORDER.LIGHT}`,
+                    border: `1px solid ${COLORS.CONTEXT.BORDER.LIGHT}`,
                   }}
                 >
                   <Box
@@ -86,4 +86,5 @@ export const ColorPalette: React.FC = () => {
 };
 
 export default ColorPalette;
+
 

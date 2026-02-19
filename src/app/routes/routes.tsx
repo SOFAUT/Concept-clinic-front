@@ -34,7 +34,6 @@ import OnboardingPatient from "../../pages/onboarding/OnboardingPatient";
 import OnboardingClinic from "../../pages/onboarding/OnboardingClinic";
 
 // Common Components
-import RoleBasedRedirect from "../../components/common/RoleBasedRedirect";
 
 export const AppRoutes = () => (
   <Routes>

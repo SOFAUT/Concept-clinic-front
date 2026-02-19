@@ -46,7 +46,7 @@ const UserBox: React.FC<{ collapsed: boolean }> = ({ collapsed }) => {
         gap: 1,
       }}
     >
-      <Avatar sx={{ width: 40, height: 40 }}>
+      <Avatar sx={{ width: 40, height: 40, bgcolor: (theme) => theme.palette.mode === 'dark' ? '#7B8EE4' : 'primary.main' }}>
         {user.first_name?.[0] || user.email[0]}
       </Avatar>
       {!collapsed && (

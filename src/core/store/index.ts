@@ -34,7 +34,7 @@ const persistConfig: PersistConfig<RootState> = {
     ? [
         encryptTransform({
           secretKey: persistSecret,
-          onError: (_err) => {},
+          onError: () => {},
         }),
       ]
     : [],

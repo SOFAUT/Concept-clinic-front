@@ -84,7 +84,7 @@ export default function Profile() {
         text: 'Perfil atualizado com sucesso!',
       });
       setIsEditing(false);
-    } catch (error) {
+    } catch {
       setSaveMessage({
         type: 'error',
         text: 'Erro ao salvar o perfil. Tente novamente.',

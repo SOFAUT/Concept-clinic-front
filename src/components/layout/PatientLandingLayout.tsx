@@ -113,7 +113,7 @@ function PatientHeader({
             {user && (
               <Box>
                 <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
-                  <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
+                  <Avatar sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? '#7B8EE4' : 'primary.main', width: 36, height: 36 }}>
                     {getUserInitials()}
                   </Avatar>
                 </IconButton>

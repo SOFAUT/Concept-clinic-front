@@ -66,7 +66,7 @@ export default function ChooseRole() {
             <PersonIcon
               sx={{
                 fontSize: 80,
-                color: 'primary.main',
+                color: (theme) => theme.palette.mode === 'dark' ? '#7B8EE4' : 'primary.main',
                 mb: 2,
               }}
             />
@@ -113,7 +113,7 @@ export default function ChooseRole() {
             <BusinessIcon
               sx={{
                 fontSize: 80,
-                color: 'secondary.main',
+                color: (theme) => theme.palette.mode === 'dark' ? '#7B8EE4' : 'secondary.main',
                 mb: 2,
               }}
             />

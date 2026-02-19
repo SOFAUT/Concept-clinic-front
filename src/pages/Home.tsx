@@ -2,7 +2,6 @@ import { Box, Button, Container, Typography, IconButton, Tooltip } from "@mui/ma
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
 import { useNavigate } from "react-router";
-import { APP_ROUTES } from "../util/constants";
 import { useMemo, useState } from "react";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import getTheme from "../assets/styles/theme";

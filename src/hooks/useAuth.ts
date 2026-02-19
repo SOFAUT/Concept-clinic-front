@@ -30,9 +30,10 @@ export function useAuth() {
         console.error('[useAuth] Resposta inválida:', response)
         throw new Error('Resposta inválida do servidor')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[useAuth] Erro no login:', err)
-      setError(err.message || 'Erro ao fazer login')
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao fazer login';
+      setError(errorMessage)
       throw err
     } finally {
       setLoading(false)
@@ -54,8 +55,9 @@ export function useAuth() {
       } else {
         throw new Error('Resposta inválida do servidor')
       }
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao fazer login')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao fazer login';
+      setError(errorMessage)
       throw err
     } finally {
       setLoading(false)
@@ -85,8 +87,9 @@ export function useAuth() {
         })
         return userData
       }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao cadastrar')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao cadastrar';
+      setError(errorMessage)
       throw err
     } finally {
       setLoading(false)
@@ -108,8 +111,9 @@ export function useAuth() {
       } else {
         throw new Error('Respos inválida do servidor')
       }
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao cadastrar clínica')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao cadastrar clínica';
+      setError(errorMessage)
       throw err
     } finally {
       setLoading(false)

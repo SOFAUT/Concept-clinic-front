@@ -90,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({
         {user && (
           <Box sx={{ ml: 2 }}>
             <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
-              <Avatar sx={{ bgcolor: 'primary.main' }}>
+              <Avatar sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? '#7B8EE4' : 'primary.main' }}>
                 {getUserInitials()}
               </Avatar>
             </IconButton>

@@ -1,4 +1,4 @@
-export interface ResponseModel<T = any> {
+export interface ResponseModel<T = unknown> {
   status: number;
   message: string;
   data?: T;
@@ -16,11 +16,11 @@ export const httpClient = {
     _onUnauthorized = callback;
   },
 
-  async request<T = any>(
+  async request<T = unknown>(
     method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
     baseUrl: string,
     endpoint: string,
-    payload?: any
+    payload?: unknown
   ): Promise<ResponseModel<T>> {
     const url = `${baseUrl.replace(/\/$/, "")}${endpoint}`;
     const opts: RequestInit = {
@@ -44,18 +44,19 @@ export const httpClient = {
         message: json.message ?? res.statusText,
         data: json.data ?? json,
       };
-    } catch (err: any) {
-      return { status: 0, message: err.message || "Network error" };
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Network error";
+      return { status: 0, message: errorMessage };
     }
   },
 
   get<T>(baseUrl: string, endpoint: string) {
     return this.request<T>("GET", baseUrl, endpoint);
   },
-  post<T>(baseUrl: string, endpoint: string, payload: any) {
+  post<T>(baseUrl: string, endpoint: string, payload: unknown) {
     return this.request<T>("POST", baseUrl, endpoint, payload);
   },
-  put<T>(baseUrl: string, endpoint: string, id: string | number, payload: any) {
+  put<T>(baseUrl: string, endpoint: string, id: string | number, payload: unknown) {
     return this.request<T>("PUT", baseUrl, `${endpoint}/${id}`, payload);
   },
   delete<T>(baseUrl: string, endpoint: string, id: string | number) {
@@ -65,7 +66,7 @@ export const httpClient = {
     baseUrl: string,
     endpoint: string,
     id: string | number,
-    payload: any
+    payload: unknown
   ) {
     return this.request<T>("PATCH", baseUrl, `${endpoint}/${id}`, payload);
   },

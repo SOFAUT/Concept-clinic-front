@@ -6,12 +6,13 @@ export const getTheme = (mode: PaletteMode) =>
     palette: {
       mode,
       primary: {
-        main: COLORS.PRIMARY,
+        main: mode === "dark" ? "#7B8EE4" : COLORS.PRIMARY,
         light: COLORS.PRIMARY_LIGHT,
+        dark: mode === "dark" ? "#6B7DD4" : COLORS.PRIMARY,
         contrastText: COLORS.WHITE,
       },
       secondary: {
-        main: COLORS.SECONDARY,
+        main: mode === "dark" ? "#A3AED0" : COLORS.SECONDARY,
         light: COLORS.ACCENT_LIGHT,
         contrastText: COLORS.WHITE,
       },
@@ -25,10 +26,10 @@ export const getTheme = (mode: PaletteMode) =>
       },
       warning: {
         main: COLORS.WARNING,
-        contrastText: COLORS.DARK,
+        contrastText: COLORS.DARK.TEXT.PRIMARY,
       },
       error: {
-        main: COLORS.ERROR,
+        main: mode === "dark" ? "#FF7B7B" : COLORS.ERROR,
         contrastText: COLORS.WHITE,
       },
       grey: {
@@ -48,6 +49,7 @@ export const getTheme = (mode: PaletteMode) =>
         secondary: mode === "dark" ? COLORS.DARK.TEXT.SECONDARY : COLORS.CONTEXT.TEXT.SECONDARY,
         disabled: mode === "dark" ? COLORS.DARK.TEXT.DISABLED : COLORS.CONTEXT.TEXT.DISABLED,
       },
+      divider: mode === "dark" ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.12)",
     },
     typography: {
       fontFamily: "Ubuntu, sans-serif",
@@ -59,6 +61,51 @@ export const getTheme = (mode: PaletteMode) =>
       h6: { fontWeight: 400 },
       body1: { fontWeight: 300 },
       body2: { fontWeight: 300 },
+    },
+    components: {
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundImage: "none",
+          },
+        },
+      },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            "& .MuiOutlinedInput-root": {
+              color: mode === "dark" ? COLORS.DARK.TEXT.PRIMARY : COLORS.CONTEXT.TEXT.PRIMARY,
+            },
+          },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            backgroundImage: "none",
+          },
+        },
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            "&.MuiButton-textPrimary": {
+              color: mode === "dark" ? "#94A3E1" : COLORS.PRIMARY,
+              "&:hover": {
+                backgroundColor: mode === "dark" ? "rgba(148, 163, 225, 0.08)" : undefined,
+              },
+            },
+            "&.MuiButton-outlinedPrimary": {
+              borderColor: mode === "dark" ? "#7B8EE4" : undefined,
+              color: mode === "dark" ? "#7B8EE4" : undefined,
+              "&:hover": {
+                borderColor: mode === "dark" ? "#94A3E1" : undefined,
+                backgroundColor: mode === "dark" ? "rgba(123, 142, 228, 0.08)" : undefined,
+              },
+            },
+          },
+        },
+      },
     },
   });
 
