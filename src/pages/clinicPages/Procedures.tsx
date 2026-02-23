@@ -17,8 +17,10 @@ import {
   List,
   ListItem,
   ListItemText,
+  IconButton,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useAppSelector } from '../../core/store/hooks';
 
 const STORAGE_KEY = 'mock_procedures';
@@ -106,6 +108,12 @@ export default function Procedures() {
     handleFecharModal();
   };
 
+  const handleExcluirProcedimento = (id: number) => {
+    const todos = loadProcedimentos().filter((p) => p.id !== id);
+    saveProcedimentos(todos);
+    recarregarProcedimentos();
+  };
+
   return (
     <Box>
       <Typography variant="h4" fontWeight={700} mb={3}>
@@ -133,7 +141,21 @@ export default function Procedures() {
         ) : (
           <List dense disablePadding>
             {procedimentos.map((p) => (
-              <ListItem key={p.id} divider>
+              <ListItem
+                key={p.id}
+                divider
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    aria-label="Excluir procedimento"
+                    onClick={() => handleExcluirProcedimento(p.id)}
+                    color="error"
+                    size="small"
+                  >
+                    <DeleteOutlineIcon />
+                  </IconButton>
+                }
+              >
                 <ListItemText
                   primary={p.finalidade || '(Sem finalidade)'}
                   secondary={

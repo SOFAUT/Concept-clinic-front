@@ -34,6 +34,14 @@ const MOCK_CLINICS_KEY = "mock_clinics";
 const MOCK_PROCEDURES_KEY = "mock_procedures";
 const PATIENT_CLINICAS_STORAGE_PREFIX = "patient_clinicas_escolhidas_";
 const PATIENT_CARDS_STORAGE_PREFIX = "patient_cartoes_";
+const CLINIC_PATIENTS_STORAGE_PREFIX = "clinic_patients_";
+
+interface PacienteAssociadoClinica {
+  userId: number;
+  nome: string;
+  email: string;
+  dataAssociacao: string;
+}
 
 interface CartaoSalvo {
   id: number;
@@ -134,6 +142,29 @@ function savePatientCards(userId: number, cards: CartaoSalvo[]) {
   }
 }
 
+function loadClinicPatients(clinicId: number): PacienteAssociadoClinica[] {
+  try {
+    const key = CLINIC_PATIENTS_STORAGE_PREFIX + clinicId;
+    const stored = localStorage.getItem(key);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as PacienteAssociadoClinica[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function addPatientToClinic(clinicId: number, patient: PacienteAssociadoClinica) {
+  const list = loadClinicPatients(clinicId);
+  if (list.some((p) => p.userId === patient.userId)) return;
+  list.push(patient);
+  try {
+    localStorage.setItem(CLINIC_PATIENTS_STORAGE_PREFIX + clinicId, JSON.stringify(list));
+  } catch {
+    // ignore
+  }
+}
+
 export default function PaymentDashboard() {
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id ?? 0;
@@ -210,10 +241,17 @@ export default function PaymentDashboard() {
   };
 
   const handleConfirmarClinica = () => {
-    if (clinicaSelecionadaId) {
+    if (clinicaSelecionadaId && user) {
       const clinica = clinicas.find((c) => String(c.id) === clinicaSelecionadaId);
       if (clinica && !clinicasEscolhidas.some((c) => c.id === clinica.id)) {
         setClinicasEscolhidas((prev) => [...prev, clinica]);
+        const nomeCompleto = [user.first_name, user.last_name].filter(Boolean).join(" ").trim() || user.email || `Paciente ${user.id}`;
+        addPatientToClinic(clinica.id, {
+          userId: user.id,
+          nome: nomeCompleto,
+          email: user.email ?? "",
+          dataAssociacao: new Date().toISOString(),
+        });
       }
     }
     setModalClinicaAberto(false);

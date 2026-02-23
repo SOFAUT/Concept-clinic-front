@@ -1,6 +1,30 @@
-import { Box, Typography, Paper, Stack, Chip, Divider } from '@mui/material';
+import { Box, Typography, Paper, Stack, Chip, Divider, Button } from '@mui/material';
 import { List, ListItem, ListItemText } from '@mui/material';
 import dayjs from 'dayjs';
+import { useAppSelector } from '../../core/store/hooks';
+import { useNavigate } from 'react-router';
+import { APP_ROUTES } from '../../util/constants';
+import BusinessIcon from '@mui/icons-material/Business';
+
+const PATIENT_CLINICAS_STORAGE_PREFIX = 'patient_clinicas_escolhidas_';
+
+interface ClinicaItem {
+  id: number;
+  nomeFantasia: string;
+  nomeEmpresa: string;
+}
+
+function loadClinicasEscolhidas(userId: number): ClinicaItem[] {
+  try {
+    const key = PATIENT_CLINICAS_STORAGE_PREFIX + userId;
+    const stored = localStorage.getItem(key);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as { clinicasEscolhidas?: ClinicaItem[] };
+    return Array.isArray(parsed?.clinicasEscolhidas) ? parsed.clinicasEscolhidas : [];
+  } catch {
+    return [];
+  }
+}
 
 interface TransacaoPendente {
   id: number;
@@ -12,38 +36,15 @@ interface TransacaoPendente {
   status: 'pendente' | 'vencido';
 }
 
-// Dados mock de transações pendentes
-const mockTransacoesPendentes: TransacaoPendente[] = [
-  {
-    id: 1,
-    procedimento: 'Botox Facial',
-    clinica: 'Clínica Estética Premium',
-    valor: 'R$ 450,00',
-    dataVencimento: '2026-02-10',
-    formaPagamento: 'pix',
-    status: 'pendente',
-  },
-  {
-    id: 2,
-    procedimento: 'Preenchimento Labial',
-    clinica: 'Beauty Center',
-    valor: 'R$ 380,00',
-    dataVencimento: '2026-02-08',
-    formaPagamento: 'cartao',
-    status: 'vencido',
-  },
-  {
-    id: 3,
-    procedimento: 'Limpeza de Pele',
-    clinica: 'Clínica Estética Premium',
-    valor: 'R$ 150,00',
-    dataVencimento: '2026-02-12',
-    formaPagamento: 'pix',
-    status: 'pendente',
-  },
-];
+// Lista de transações pendentes – dados virão da API
+const transacoesPendentes: TransacaoPendente[] = [];
 
 export default function PatientDashboard() {
+  const user = useAppSelector((state) => state.auth.user);
+  const userId = user?.id ?? 0;
+  const clinicasEscolhidas = loadClinicasEscolhidas(userId);
+  const navigate = useNavigate();
+
   return (
     <Box>
       <Typography variant="h4" fontWeight={700} mb={3}>
@@ -74,6 +75,45 @@ export default function PatientDashboard() {
         </Box>
       </Stack>
 
+      {/* Clínicas selecionadas (área de pagamentos) */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              Clínicas selecionadas para pagamento
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Clínicas que você escolheu na área de pagamentos (Escolher clínica).
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<BusinessIcon />}
+            onClick={() => navigate(APP_ROUTES.PATIENT.PAYMENTS)}
+          >
+            Ir para Pagamentos
+          </Button>
+        </Box>
+        {clinicasEscolhidas.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+            Nenhuma clínica selecionada. Acesse a área de Pagamentos e use &quot;Escolher clínica&quot; para adicionar.
+          </Typography>
+        ) : (
+          <List dense disablePadding>
+            {clinicasEscolhidas.map((c) => (
+              <ListItem key={c.id} sx={{ py: 0.75, px: 0 }}>
+                <ListItemText
+                  primary={c.nomeFantasia}
+                  secondary={c.nomeEmpresa || undefined}
+                  primaryTypographyProps={{ fontWeight: 500 }}
+                />
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </Paper>
+
       {/* Lista de Transações Pendentes */}
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" fontWeight={600} gutterBottom>
@@ -83,13 +123,13 @@ export default function PatientDashboard() {
           Pagamentos aguardando confirmação
         </Typography>
         
-        {mockTransacoesPendentes.length === 0 ? (
+        {transacoesPendentes.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
             Nenhuma transação pendente no momento.
           </Typography>
         ) : (
           <List disablePadding>
-            {mockTransacoesPendentes.map((transacao, index) => (
+            {transacoesPendentes.map((transacao, index) => (
               <Box key={transacao.id}>
                 <ListItem
                   sx={{
@@ -133,7 +173,7 @@ export default function PatientDashboard() {
                     sx={{ flex: 1 }}
                   />
                 </ListItem>
-                {index < mockTransacoesPendentes.length - 1 && <Divider />}
+                {index < transacoesPendentes.length - 1 && <Divider />}
               </Box>
             ))}
           </List>

@@ -1,14 +1,11 @@
 import { Box, Typography, Paper, Stack, List, ListItem, ListItemText, ListItemIcon } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-const MOCK_PAGAMENTOS = [
-  { id: 1, data: "05/02/2025", clinica: "Clínica Exemplo", procedimento: "Consulta", valor: "R$ 150,00", status: "Pago" },
-  { id: 2, data: "28/01/2025", clinica: "Clínica Exemplo", procedimento: "Procedimento X", valor: "R$ 320,00", status: "Pago" },
-  { id: 3, data: "15/01/2025", clinica: "Outra Clínica", procedimento: "Avaliação", valor: "R$ 200,00", status: "Pago" },
-];
+// Lista de histórico de pagamentos – dados virão da API
+const historicoPagamentos: Array<{ id: number; data: string; clinica: string; procedimento: string; valor: string; status: string }> = [];
 
 export default function PatientHistory() {
-  const totalPagamentos = 0; // Futuramente retorna a quantidade real de pagamentos
+  const totalPagamentos = historicoPagamentos.length;
 
   return (
     <Box>
@@ -54,7 +51,7 @@ export default function PatientHistory() {
           Histórico de pagamentos
         </Typography>
         <List dense disablePadding>
-          {MOCK_PAGAMENTOS.map((p) => (
+          {historicoPagamentos.map((p) => (
             <ListItem key={p.id} divider>
               <ListItemIcon sx={{ minWidth: 40 }}>
                 <CheckCircleIcon color="success" fontSize="small" />
@@ -70,7 +67,7 @@ export default function PatientHistory() {
             </ListItem>
           ))}
         </List>
-        {MOCK_PAGAMENTOS.length === 0 && (
+        {historicoPagamentos.length === 0 && (
           <Typography color="text.secondary" sx={{ py: 2 }}>
             Nenhum pagamento realizado ainda.
           </Typography>
