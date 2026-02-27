@@ -9,13 +9,14 @@ import {
   DialogContent,
   DialogActions,
   List,
-  ListItem,
   ListItemButton,
   ListItemText,
   ListItemIcon,
   Radio,
   TextField,
 } from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
+import type { GridColDef } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppSelector } from "../../core/store/hooks";
 import dayjs from "dayjs";
@@ -207,6 +208,7 @@ export default function Financial() {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 2,
+            mb: 2,
           }}
         >
           <Typography color="text.secondary">
@@ -223,37 +225,96 @@ export default function Financial() {
             Cadastrar cobrança
           </Button>
         </Box>
-
         {cobrancas.length > 0 && (
-          <List dense disablePadding sx={{ mt: 2 }}>
-            {cobrancas.map((c) => (
-              <ListItem
-                key={c.id}
-                sx={{ py: 0.75 }}
-                secondaryAction={
-                  <Button
-                    color="error"
-                    size="small"
-                    onClick={() => {
-                      const novaLista = cobrancas.filter((item) => item.id !== c.id);
-                      setCobrancas(novaLista);
-                      if (clinicId) saveClinicCharges(clinicId, novaLista);
-                    }}
-                  >
-                    Excluir
-                  </Button>
-                }
-              >
-                <ListItemText
-                  primary={`${c.pacienteNome} · R$ ${c.valor} · ${c.parcelas}x`}
-                  secondary={`Procedimento: ${
-                    c.procedimentoNome || "—"
-                  } · Data: ${dayjs(c.dataAgendada).format("DD/MM/YYYY")}`}
-                  secondaryTypographyProps={{ color: "text.secondary" }}
-                />
-              </ListItem>
-            ))}
-          </List>
+          <Box sx={{ height: 360, width: "100%" }}>
+            <DataGrid
+              rows={cobrancas}
+              columns={[
+                {
+                  field: "pacienteNome",
+                  headerName: "Paciente",
+                  flex: 1,
+                  minWidth: 180,
+                },
+                {
+                  field: "procedimentoNome",
+                  headerName: "Procedimento",
+                  flex: 1,
+                  minWidth: 180,
+                  valueGetter: (params) => {
+                    const row = (params as any)?.row || {};
+                    return (row.procedimentoNome as string) || "—";
+                  },
+                },
+                {
+                  field: "valor",
+                  headerName: "Valor",
+                  flex: 0.6,
+                  minWidth: 120,
+                  valueFormatter: (params) => {
+                    const row = (params as any)?.row || {};
+                    return row.valor ? `R$ ${row.valor}` : "R$ 0,00";
+                  },
+                },
+                {
+                  field: "parcelas",
+                  headerName: "Parcelas",
+                  flex: 0.5,
+                  minWidth: 100,
+                  valueFormatter: (params) => {
+                    const row = (params as any)?.row || {};
+                    return row.parcelas ? `${row.parcelas}x` : "1x";
+                  },
+                },
+                {
+                  field: "dataAgendada",
+                  headerName: "Data agendada",
+                  flex: 0.8,
+                  minWidth: 140,
+                  valueFormatter: (params) => {
+                    const row = (params as any)?.row || {};
+                    return row.dataAgendada
+                      ? dayjs(row.dataAgendada as string).format("DD/MM/YYYY")
+                      : "–";
+                  },
+                },
+                {
+                  field: "acoes",
+                  headerName: "Ações",
+                  flex: 0.6,
+                  minWidth: 120,
+                  sortable: false,
+                  filterable: false,
+                  renderCell: (params) => (
+                    <Button
+                      color="error"
+                      size="small"
+                      onClick={() => {
+                        const id = params.row.id as number;
+                        const novaLista = cobrancas.filter(
+                          (item) => item.id !== id
+                        );
+                        setCobrancas(novaLista);
+                        if (clinicId) saveClinicCharges(clinicId, novaLista);
+                      }}
+                    >
+                      Excluir
+                    </Button>
+                  ),
+                },
+              ] as GridColDef[]}
+              disableRowSelectionOnClick
+              sx={{
+                border: "none",
+                "& .MuiDataGrid-cell:focus": { outline: "none" },
+                "& .MuiDataGrid-row:hover": { backgroundColor: "action.hover" },
+              }}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 5, page: 0 } },
+              }}
+              pageSizeOptions={[5, 10, 25]}
+            />
+          </Box>
         )}
       </Paper>
 
@@ -419,7 +480,27 @@ export default function Financial() {
             variant="contained"
             disabled={!cobrancaSelecionada || !parcelas}
             onClick={() => {
-              // Futuro: salvar a cobrança em localStorage
+              if (!clinicId || !cobrancaSelecionada || !parcelas) {
+                setModalCobrancaAberto(false);
+                return;
+              }
+              const atual = loadClinicCharges(clinicId);
+              const novoId =
+                atual.length > 0 ? Math.max(...atual.map((c) => c.id)) + 1 : 1;
+              const novaCobranca: CobrancaClinica = {
+                id: novoId,
+                clinicId,
+                userId: cobrancaSelecionada.userId,
+                pacienteNome: cobrancaSelecionada.pacienteNome,
+                procedimentoNome: cobrancaSelecionada.procedimentoNome,
+                dataAgendada: cobrancaSelecionada.dataAgendada,
+                valor: cobrancaSelecionada.valor,
+                parcelas: Number(parcelas) || 1,
+                criadaEm: new Date().toISOString(),
+              };
+              const novaLista = [...atual, novaCobranca];
+              saveClinicCharges(clinicId, novaLista);
+              setCobrancas(novaLista);
               setModalCobrancaAberto(false);
             }}
           >
