@@ -40,6 +40,9 @@ const initialValues: LocationFormData = {
   referencia: "",
 };
 
+// Helper to relax Grid typing for current MUI version
+const GridItem = Grid as any;
+
 function loadPatientLocation(userId: number): LocationFormData | null {
   try {
     const key = PATIENT_LOCATION_STORAGE_PREFIX + userId;
@@ -196,8 +199,8 @@ export default function LocationForm() {
             </Typography>
           </Box>
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+          <GridItem container spacing={2}>
+            <GridItem item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="CEP"
@@ -207,8 +210,8 @@ export default function LocationForm() {
                 onBlur={handleCepBlur}
                 inputProps={{ maxLength: 9 }}
               />
-            </Grid>
-            <Grid item xs={12} sm={8}>
+            </GridItem>
+            <GridItem item xs={12} sm={8}>
               <TextField
                 fullWidth
                 label="Logradouro"
@@ -216,8 +219,8 @@ export default function LocationForm() {
                 value={formData.logradouro}
                 onChange={handleChange("logradouro")}
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </GridItem>
+            <GridItem item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Número"
@@ -225,8 +228,8 @@ export default function LocationForm() {
                 value={formData.numero}
                 onChange={handleChange("numero")}
               />
-            </Grid>
-            <Grid item xs={12} sm={8}>
+            </GridItem>
+            <GridItem item xs={12} sm={8}>
               <TextField
                 fullWidth
                 label="Complemento"
@@ -234,24 +237,24 @@ export default function LocationForm() {
                 value={formData.complemento}
                 onChange={handleChange("complemento")}
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </GridItem>
+            <GridItem item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Bairro"
                 value={formData.bairro}
                 onChange={handleChange("bairro")}
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </GridItem>
+            <GridItem item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Cidade"
                 value={formData.cidade}
                 onChange={handleChange("cidade")}
               />
-            </Grid>
-            <Grid item xs={12} sm={2}>
+            </GridItem>
+            <GridItem item xs={12} sm={2}>
               <TextField
                 fullWidth
                 select
@@ -267,8 +270,8 @@ export default function LocationForm() {
                   </option>
                 ))}
               </TextField>
-            </Grid>
-            <Grid item xs={12}>
+            </GridItem>
+            <GridItem item xs={12}>
               <TextField
                 fullWidth
                 label="Ponto de referência"
@@ -283,8 +286,8 @@ export default function LocationForm() {
                   ),
                 }}
               />
-            </Grid>
-          </Grid>
+            </GridItem>
+          </GridItem>
 
           <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 1 }}>
             <Button

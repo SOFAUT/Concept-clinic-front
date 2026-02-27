@@ -1,6 +1,7 @@
 import { Box, Typography, Button, Paper, Select, MenuItem } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
+import type { SelectChangeEvent } from '@mui/material/Select';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router';
 import { APP_ROUTES } from '../../util/constants';
@@ -136,7 +137,7 @@ export default function Patients() {
         const userId = params.row.id as number;
         const agendamentoId = params.row.agendamentoId as number | null;
 
-        const handleChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+        const handleChange = (event: SelectChangeEvent<AgendamentoPaciente["status"]>) => {
           const newStatus = event.target.value as AgendamentoPaciente["status"];
           // Atualiza localStorage para o paciente
           const list = loadPatientAppointments(userId);
