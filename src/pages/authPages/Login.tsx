@@ -40,7 +40,6 @@ export default function Login() {
     loginAttempted.current = true
     try {
       await login({ email, password })
-      // A navegação acontece via useEffect quando o user é atualizado
     } catch (err: unknown) {
       loginAttempted.current = false
       const errorMessage = err instanceof Error ? err.message : 'Erro ao fazer login';

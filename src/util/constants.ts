@@ -49,6 +49,8 @@ export const APP_ROUTES = {
     HISTORY: "/patient/history",
     PAYMENTS: "/patient/payments",
     PROFILE: "/patient/profile",
+    LOCATION: "/patient/location",
+    CARDS: "/patient/cards",
   },
 };
 

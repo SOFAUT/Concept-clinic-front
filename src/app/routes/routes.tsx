@@ -27,6 +27,8 @@ import PatientHistory from "../../pages/patientPages/History";
 import MyAppointments from "../../pages/patientPages/MyAppointments";
 import PaymentDashboard from "../../pages/patientPages/PaymentDashboard";
 import Profile from "../../pages/patientPages/Profile";
+import LocationForm from "../../pages/patientPages/LocationForm";
+import PatientCards from "../../pages/patientPages/PatientCards";
 
 // Onboarding Pages
 import ChooseRole from "../../pages/onboarding/ChooseRole";
@@ -113,6 +115,8 @@ export const AppRoutes = () => (
       <Route path={APP_ROUTES.PATIENT.HISTORY} element={<PatientHistory />} />
       <Route path={APP_ROUTES.PATIENT.PAYMENTS} element={<PaymentDashboard />} />
       <Route path={APP_ROUTES.PATIENT.PROFILE} element={<Profile />} />
+      <Route path={APP_ROUTES.PATIENT.LOCATION} element={<LocationForm />} />
+      <Route path={APP_ROUTES.PATIENT.CARDS} element={<PatientCards />} />
     </Route>
 
     {/* 404 - Deve ser a última rota */}

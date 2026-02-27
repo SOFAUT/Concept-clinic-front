@@ -15,11 +15,9 @@ import {
   FormControl,
   FormLabel,
   List,
-  ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  IconButton,
   Snackbar,
   Alert,
   TextField,
@@ -27,14 +25,50 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import BusinessIcon from "@mui/icons-material/Business";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { useNavigate } from "react-router";
 import { useAppSelector } from "../../core/store/hooks";
+import { APP_ROUTES } from "../../util/constants";
 
 const MOCK_CLINICS_KEY = "mock_clinics";
 const MOCK_PROCEDURES_KEY = "mock_procedures";
 const PATIENT_CLINICAS_STORAGE_PREFIX = "patient_clinicas_escolhidas_";
 const PATIENT_CARDS_STORAGE_PREFIX = "patient_cartoes_";
+const PATIENT_LOCATION_STORAGE_PREFIX = "patient_location_";
 const CLINIC_PATIENTS_STORAGE_PREFIX = "clinic_patients_";
+
+function hasPatientAddress(userId: number): boolean {
+  try {
+    const key = PATIENT_LOCATION_STORAGE_PREFIX + userId;
+    const stored = localStorage.getItem(key);
+    if (!stored) return false;
+    const parsed = JSON.parse(stored) as { cep?: string; logradouro?: string; numero?: string; bairro?: string; cidade?: string; estado?: string };
+    return !!(
+      parsed?.cep?.trim() &&
+      parsed?.logradouro?.trim() &&
+      parsed?.numero?.trim() &&
+      parsed?.bairro?.trim() &&
+      parsed?.cidade?.trim() &&
+      parsed?.estado?.trim()
+    );
+  } catch {
+    return false;
+  }
+}
+
+function loadPatientLocationForFilter(userId: number): { cidade: string; estado: string } | null {
+  try {
+    const key = PATIENT_LOCATION_STORAGE_PREFIX + userId;
+    const stored = localStorage.getItem(key);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as { cidade?: string; estado?: string };
+    const cidade = parsed?.cidade?.trim().toLowerCase();
+    const estado = parsed?.estado?.trim().toLowerCase();
+    if (!cidade || !estado) return null;
+    return { cidade, estado };
+  } catch {
+    return null;
+  }
+}
 
 interface PacienteAssociadoClinica {
   userId: number;
@@ -57,6 +91,8 @@ interface ClinicaItem {
   id: number;
   nomeFantasia: string;
   nomeEmpresa: string;
+  cidade: string;
+  estado: string;
 }
 
 interface ProcedimentoItem {
@@ -68,12 +104,12 @@ interface ProcedimentoItem {
   parcelasCartao: string;
 }
 
-function loadProcedimentosByClinica(clinicaId: number): ProcedimentoItem[] {
+function loadAllProcedimentos(): ProcedimentoItem[] {
   try {
     const stored = localStorage.getItem(MOCK_PROCEDURES_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored) as ProcedimentoItem[];
-    return (parsed || []).filter((p) => p.clinicaId === clinicaId);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
@@ -83,12 +119,26 @@ function loadClinicasFromStorage(): ClinicaItem[] {
   try {
     const stored = localStorage.getItem(MOCK_CLINICS_KEY);
     if (!stored) return [];
-    const parsed = JSON.parse(stored) as Array<{ id?: number; nomeFantasia?: string; nomeEmpresa?: string }>;
-    return (parsed || []).map((c, i) => ({
-      id: c.id ?? i + 1,
-      nomeFantasia: c.nomeFantasia || c.nomeEmpresa || "Clínica",
-      nomeEmpresa: c.nomeEmpresa || "",
-    }));
+    const parsed = JSON.parse(stored) as Array<{
+      id?: number;
+      nomeFantasia?: string;
+      nomeEmpresa?: string;
+      municipio?: string;
+      uf?: string;
+      cidade?: string;
+      estado?: string;
+    }>;
+    return (parsed || []).map((c, i) => {
+      const cidade = (c.cidade ?? c.municipio ?? "").toString().trim().toLowerCase();
+      const estado = (c.estado ?? c.uf ?? "").toString().trim().toLowerCase();
+      return {
+        id: c.id ?? i + 1,
+        nomeFantasia: c.nomeFantasia || c.nomeEmpresa || "Clínica",
+        nomeEmpresa: c.nomeEmpresa || "",
+        cidade,
+        estado,
+      };
+    });
   } catch {
     return [];
   }
@@ -118,7 +168,7 @@ function savePatientClinicasState(userId: number, state: PatientClinicasState) {
   try {
     localStorage.setItem(PATIENT_CLINICAS_STORAGE_PREFIX + userId, JSON.stringify(state));
   } catch {
-    // ignore
+    console.error("Error saving patient clinic state:");
   }
 }
 
@@ -138,7 +188,7 @@ function savePatientCards(userId: number, cards: CartaoSalvo[]) {
   try {
     localStorage.setItem(PATIENT_CARDS_STORAGE_PREFIX + userId, JSON.stringify(cards));
   } catch {
-    // ignore
+    console.error("Error saving patient cards:");
   }
 }
 
@@ -161,16 +211,18 @@ function addPatientToClinic(clinicId: number, patient: PacienteAssociadoClinica)
   try {
     localStorage.setItem(CLINIC_PATIENTS_STORAGE_PREFIX + clinicId, JSON.stringify(list));
   } catch {
-    // ignore
+    console.error("Error adding patient to clinic:");
   }
 }
 
 export default function PaymentDashboard() {
+  const navigate = useNavigate();
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id ?? 0;
 
   const [modalAberto, setModalAberto] = useState(false);
   const [modalClinicaAberto, setModalClinicaAberto] = useState(false);
+  const [modalAlertaEnderecoAberto, setModalAlertaEnderecoAberto] = useState(false);
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>("pix");
   const [clinicas, setClinicas] = useState<ClinicaItem[]>([]);
   const [clinicaSelecionadaId, setClinicaSelecionadaId] = useState<string>("");
@@ -188,7 +240,19 @@ export default function PaymentDashboard() {
   });
   const [cartaoSelecionadoId, setCartaoSelecionadoId] = useState<string>("");
   const [cartoesDoUsuario, setCartoesDoUsuario] = useState<CartaoSalvo[]>([]);
+  const [procedimentos, setProcedimentos] = useState<ProcedimentoItem[]>([]);
+  const [buscaProcedimento, setBuscaProcedimento] = useState("");
+  const [filtroClinica, setFiltroClinica] = useState<"estado" | "cidade">("estado");
   const hasLoadedFromStorage = useRef(false);
+
+  const procedimentosFiltrados = procedimentos.filter((p) =>
+    (p.finalidade || "").toLowerCase().includes(buscaProcedimento.toLowerCase())
+  );
+
+  // Carregar todos os procedimentos ao montar
+  useEffect(() => {
+    setProcedimentos(loadAllProcedimentos());
+  }, []);
 
   // Carregar clínicas escolhidas e seleção ao montar (paciente logado)
   useEffect(() => {
@@ -210,10 +274,7 @@ export default function PaymentDashboard() {
   }, [userId, clinicasEscolhidas, clinicaParaPagamentoId]);
 
   const handleNovoPagamento = () => {
-    if (!clinicaParaPagamentoId) {
-      setAlertaClinicaAberto(true);
-      return;
-    }
+    if (!clinicaParaPagamentoId) return;
     setCartoesDoUsuario(loadPatientCards(userId));
     setModalAberto(true);
   };
@@ -231,9 +292,19 @@ export default function PaymentDashboard() {
   };
 
   const handleEscolherClinica = () => {
+    if (!userId || !hasPatientAddress(userId)) {
+      setModalAlertaEnderecoAberto(true);
+      return;
+    }
     setClinicas(loadClinicasFromStorage());
     setClinicaSelecionadaId("");
+    setFiltroClinica("estado");
     setModalClinicaAberto(true);
+  };
+
+  const handleIrParaCadastroEndereco = () => {
+    setModalAlertaEnderecoAberto(false);
+    navigate(APP_ROUTES.PATIENT.LOCATION);
   };
 
   const handleFecharModalClinica = () => {
@@ -241,25 +312,34 @@ export default function PaymentDashboard() {
   };
 
   const handleConfirmarClinica = () => {
-    if (clinicaSelecionadaId && user) {
-      const clinica = clinicas.find((c) => String(c.id) === clinicaSelecionadaId);
-      if (clinica && !clinicasEscolhidas.some((c) => c.id === clinica.id)) {
-        setClinicasEscolhidas((prev) => [...prev, clinica]);
-        const nomeCompleto = [user.first_name, user.last_name].filter(Boolean).join(" ").trim() || user.email || `Paciente ${user.id}`;
-        addPatientToClinic(clinica.id, {
-          userId: user.id,
-          nome: nomeCompleto,
-          email: user.email ?? "",
-          dataAssociacao: new Date().toISOString(),
-        });
-      }
+    if (!clinicaSelecionadaId || !userId || !user) {
+      setModalClinicaAberto(false);
+      return;
+    }
+    const clinica = clinicas.find((c) => String(c.id) === clinicaSelecionadaId);
+    const novaListaEscolhidas =
+      clinica && !clinicasEscolhidas.some((c) => c.id === clinica.id)
+        ? [...clinicasEscolhidas, clinica]
+        : clinicasEscolhidas;
+
+    setClinicaParaPagamentoId(clinicaSelecionadaId);
+    setClinicasEscolhidas(novaListaEscolhidas);
+
+    savePatientClinicasState(userId, {
+      clinicasEscolhidas: novaListaEscolhidas,
+      clinicaParaPagamentoId: clinicaSelecionadaId,
+    });
+
+    if (clinica && !clinicasEscolhidas.some((c) => c.id === clinica.id)) {
+      const nomeCompleto = [user.first_name, user.last_name].filter(Boolean).join(" ").trim() || user.email || `Paciente ${user.id}`;
+      addPatientToClinic(clinica.id, {
+        userId: user.id,
+        nome: nomeCompleto,
+        email: user.email ?? "",
+        dataAssociacao: new Date().toISOString(),
+      });
     }
     setModalClinicaAberto(false);
-  };
-
-  const handleRemoverClinica = (id: number) => {
-    setClinicasEscolhidas((prev) => prev.filter((c) => c.id !== id));
-    if (String(id) === clinicaParaPagamentoId) setClinicaParaPagamentoId("");
   };
 
   const handleCadastrarCartao = () => {
@@ -325,6 +405,7 @@ export default function PaymentDashboard() {
             variant="outlined"
             startIcon={<BusinessIcon />}
             onClick={handleEscolherClinica}
+            disabled={!procedimentoSelecionadoId}
           >
             Escolher clínica
           </Button>
@@ -339,6 +420,10 @@ export default function PaymentDashboard() {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleNovoPagamento}
+            disabled={
+              !clinicaParaPagamentoId ||
+              !clinicasEscolhidas.some((c) => String(c.id) === clinicaParaPagamentoId)
+            }
           >
             Novo pagamento
           </Button>
@@ -348,37 +433,52 @@ export default function PaymentDashboard() {
       <Box sx={{ mt: 3 }}>
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
-            Clínicas selecionadas
+            Procedimentos disponíveis
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            Selecione a clínica em que será realizado o pagamento.
+            Busque e selecione o procedimento que deseja pagar.
           </Typography>
-          {clinicasEscolhidas.length === 0 ? (
+          <TextField
+            size="small"
+            fullWidth
+            label="Buscar procedimento por nome"
+            placeholder="Ex: Limpeza, Preenchimento..."
+            value={buscaProcedimento}
+            onChange={(e) => setBuscaProcedimento(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          {procedimentosFiltrados.length === 0 ? (
             <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-              Nenhuma clínica selecionada. Use o botão &quot;Escolher clínica&quot; acima para adicionar.
+              Nenhum procedimento encontrado para a busca informada.
             </Typography>
           ) : (
             <RadioGroup
-              value={clinicaParaPagamentoId}
-              onChange={(_, value) => setClinicaParaPagamentoId(value)}
-              name="clinica-pagamento"
+              value={procedimentoSelecionadoId}
+              onChange={(_, value) => setProcedimentoSelecionadoId(value)}
+              name="procedimento-contratado"
             >
-              <List dense disablePadding>
-                {clinicasEscolhidas.map((c) => (
-                  <ListItem
-                    key={c.id}
-                    sx={{ borderRadius: 1 }}
-                    secondaryAction={
-                      <IconButton edge="end" onClick={() => handleRemoverClinica(c.id)} aria-label="Remover">
-                        <DeleteOutlineIcon />
-                      </IconButton>
-                    }
+              <List dense disablePadding sx={{ maxHeight: 280, overflow: "auto" }}>
+                {procedimentosFiltrados.map((p) => (
+                  <ListItemButton
+                    key={p.id}
+                    selected={String(p.id) === procedimentoSelecionadoId}
+                    onClick={() => setProcedimentoSelecionadoId(String(p.id))}
+                    sx={{ py: 0.75 }}
                   >
                     <ListItemIcon sx={{ minWidth: 40 }}>
-                      <Radio value={String(c.id)} name="clinica-pagamento" />
+                      <Radio
+                        checked={String(p.id) === procedimentoSelecionadoId}
+                        value={String(p.id)}
+                        name="procedimento-contratado"
+                      />
                     </ListItemIcon>
-                    <ListItemText primary={c.nomeFantasia} secondary={c.nomeEmpresa || undefined} />
-                  </ListItem>
+                    <ListItemText
+                      primary={p.finalidade || "(Sem finalidade)"}
+                      secondary={`R$ ${p.valorProcedimento || "0,00"} · até ${p.parcelasCartao}x no cartão`}
+                      primaryTypographyProps={{ variant: "body2" }}
+                      secondaryTypographyProps={{ variant: "caption" }}
+                    />
+                  </ListItemButton>
                 ))}
               </List>
             </RadioGroup>
@@ -389,50 +489,32 @@ export default function PaymentDashboard() {
       <Dialog open={modalAberto} onClose={handleFecharModal} maxWidth="sm" fullWidth>
         <DialogTitle>Novo pagamento</DialogTitle>
         <DialogContent>
-          {(() => {
-            const clinicaIdNum = Number(clinicaParaPagamentoId);
-            const procedimentosDaClinica = clinicaIdNum ? loadProcedimentosByClinica(clinicaIdNum) : [];
-            return (
-              <>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1, mb: 1 }}>
-                  Procedimentos da clínica — selecione o procedimento a ser pago
-                </Typography>
-                {procedimentosDaClinica.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ py: 1, mb: 2 }}>
-                    Nenhum procedimento cadastrado por esta clínica.
-                  </Typography>
-                ) : (
-                  <RadioGroup
-                    value={procedimentoSelecionadoId}
-                    onChange={(_, value) => setProcedimentoSelecionadoId(value)}
-                    name="procedimento-pagamento"
-                  >
-                    <List dense disablePadding sx={{ mb: 2, maxHeight: 200, overflow: "auto" }}>
-                      {procedimentosDaClinica.map((p) => (
-                        <ListItemButton
-                          key={p.id}
-                          selected={String(p.id) === procedimentoSelecionadoId}
-                          onClick={() => setProcedimentoSelecionadoId(String(p.id))}
-                          sx={{ py: 0.5 }}
-                        >
-                          <ListItemIcon sx={{ minWidth: 40 }}>
-                            <Radio
-                              checked={String(p.id) === procedimentoSelecionadoId}
-                              value={String(p.id)}
-                              name="procedimento-pagamento"
-                            />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={p.finalidade || "(Sem finalidade)"}
-                            secondary={`R$ ${p.valorProcedimento || "0,00"} · até ${p.parcelasCartao}x no cartão`}
-                            primaryTypographyProps={{ variant: "body2" }}
-                            secondaryTypographyProps={{ variant: "caption" }}
-                          />
-                        </ListItemButton>
-                      ))}
-                    </List>
-                  </RadioGroup>
-                )}
+          <>
+                {(() => {
+                  const clinicaEscolhida = clinicasEscolhidas.find((c) => String(c.id) === clinicaParaPagamentoId);
+                  if (clinicaEscolhida) {
+                    const cidadeDisplay = clinicaEscolhida.cidade ? clinicaEscolhida.cidade.charAt(0).toUpperCase() + clinicaEscolhida.cidade.slice(1) : "";
+                    const estadoDisplay = clinicaEscolhida.estado ? clinicaEscolhida.estado.toUpperCase() : "";
+                    const localDisplay = cidadeDisplay && estadoDisplay ? `${cidadeDisplay} - ${estadoDisplay}` : "";
+                    const secondary = [clinicaEscolhida.nomeEmpresa, localDisplay].filter(Boolean).join(" · ");
+                    return (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, p: 1.5, borderRadius: 1, bgcolor: "action.hover" }}>
+                        <BusinessIcon color="primary" />
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={600}>
+                            {clinicaEscolhida.nomeFantasia}
+                          </Typography>
+                          {secondary && (
+                            <Typography variant="body2" color="text.secondary">
+                              {secondary}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    );
+                  }
+                  return null;
+                })()}
                 <FormControl component="fieldset" sx={{ mt: 1, width: "100%" }}>
                   <FormLabel component="legend">Forma de pagamento</FormLabel>
                   <RadioGroup
@@ -498,8 +580,6 @@ export default function PaymentDashboard() {
                   </FormControl>
                 )}
               </>
-            );
-          })()}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={handleFecharModal}>Cancelar</Button>
@@ -507,14 +587,7 @@ export default function PaymentDashboard() {
             variant="contained"
             onClick={handleConfirmar}
             disabled={
-              (() => {
-                const clinicaIdNum = Number(clinicaParaPagamentoId);
-                const procs = clinicaIdNum ? loadProcedimentosByClinica(clinicaIdNum) : [];
-                const faltaProcedimento = procs.length > 0 && !procedimentoSelecionadoId;
-                const faltaCartao =
-                  formaPagamento === "cartao" && cartoesDoUsuario.length > 0 && !cartaoSelecionadoId;
-                return faltaProcedimento || faltaCartao;
-              })()
+              formaPagamento === "cartao" && cartoesDoUsuario.length > 0 && !cartaoSelecionadoId
             }
           >
             Confirmar
@@ -525,39 +598,96 @@ export default function PaymentDashboard() {
       <Dialog open={modalClinicaAberto} onClose={handleFecharModalClinica} maxWidth="sm" fullWidth>
         <DialogTitle>Escolher clínica</DialogTitle>
         <DialogContent>
-          {clinicas.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 2 }}>
-              Nenhuma clínica cadastrada no sistema.
-            </Typography>
-          ) : (
-            <FormControl component="fieldset" sx={{ mt: 1, width: "100%" }}>
-              <FormLabel component="legend">Clínicas cadastradas</FormLabel>
-              <RadioGroup
-                value={clinicaSelecionadaId}
-                onChange={(_, value) => setClinicaSelecionadaId(value)}
-                name="clinica"
-              >
-                <List dense disablePadding>
-                  {clinicas.map((c) => (
-                    <ListItemButton
-                      key={c.id}
-                      selected={String(c.id) === clinicaSelecionadaId}
-                      onClick={() => setClinicaSelecionadaId(String(c.id))}
+          {(() => {
+            const patientLocation = loadPatientLocationForFilter(userId);
+            if (!patientLocation) {
+              return (
+                <Typography color="text.secondary" sx={{ py: 2 }}>
+                  Cadastre seu endereço para filtrar clínicas por estado e cidade.
+                </Typography>
+              );
+            }
+            const clinicasPorEstado = clinicas.filter((c) => c.estado === patientLocation.estado);
+            const clinicasPorCidade = clinicas.filter(
+              (c) => c.cidade === patientLocation.cidade && c.estado === patientLocation.estado
+            );
+            const listaExibida = filtroClinica === "estado" ? clinicasPorEstado : clinicasPorCidade;
+            const estadoDisplay = patientLocation.estado.toUpperCase();
+            const cidadeDisplay = patientLocation.cidade.charAt(0).toUpperCase() + patientLocation.cidade.slice(1);
+
+            return (
+              <>
+                <FormControl component="fieldset" sx={{ mt: 1, width: "100%" }}>
+                  <FormLabel component="legend">Onde buscar</FormLabel>
+                  <RadioGroup
+                    value={filtroClinica}
+                    onChange={(_, value) => {
+                      setFiltroClinica(value as "estado" | "cidade");
+                      setClinicaSelecionadaId("");
+                    }}
+                    name="filtro-clinica"
+                    row
+                  >
+                    <FormControlLabel
+                      value="estado"
+                      control={<Radio />}
+                      label={`Clínicas no meu estado (${estadoDisplay})`}
+                    />
+                    <FormControlLabel
+                      value="cidade"
+                      control={<Radio />}
+                      label={`Clínicas na minha cidade (${cidadeDisplay})`}
+                    />
+                  </RadioGroup>
+                </FormControl>
+
+                <FormControl component="fieldset" sx={{ mt: 2, width: "100%" }}>
+                  <FormLabel component="legend">
+                    {filtroClinica === "estado"
+                      ? `Clínicas no estado ${estadoDisplay}`
+                      : `Clínicas em ${cidadeDisplay}`}
+                  </FormLabel>
+                  {listaExibida.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                      Nenhuma clínica encontrada para esta seleção.
+                    </Typography>
+                  ) : (
+                    <RadioGroup
+                      value={clinicaSelecionadaId}
+                      onChange={(_, value) => setClinicaSelecionadaId(value)}
+                      name="clinica"
                     >
-                      <ListItemIcon sx={{ minWidth: 40 }}>
-                        <Radio
-                          checked={String(c.id) === clinicaSelecionadaId}
-                          value={String(c.id)}
-                          name="clinica"
-                        />
-                      </ListItemIcon>
-                      <ListItemText primary={c.nomeFantasia} secondary={c.nomeEmpresa || undefined} />
-                    </ListItemButton>
-                  ))}
-                </List>
-              </RadioGroup>
-            </FormControl>
-          )}
+                      <List dense disablePadding sx={{ maxHeight: 280, overflow: "auto" }}>
+                        {listaExibida.map((c) => (
+                          <ListItemButton
+                            key={c.id}
+                            selected={String(c.id) === clinicaSelecionadaId}
+                            onClick={() => setClinicaSelecionadaId(String(c.id))}
+                          >
+                            <ListItemIcon sx={{ minWidth: 40 }}>
+                              <Radio
+                                checked={String(c.id) === clinicaSelecionadaId}
+                                value={String(c.id)}
+                                name="clinica"
+                              />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={c.nomeFantasia}
+                              secondary={
+                                c.nomeEmpresa
+                                  ? `${c.nomeEmpresa} · ${(c.cidade && c.cidade.charAt(0).toUpperCase() + c.cidade.slice(1)) || "—"} - ${(c.estado && c.estado.toUpperCase()) || "—"}`
+                                  : `${(c.cidade && c.cidade.charAt(0).toUpperCase() + c.cidade.slice(1)) || "—"} - ${(c.estado && c.estado.toUpperCase()) || "—"}`
+                              }
+                            />
+                          </ListItemButton>
+                        ))}
+                      </List>
+                    </RadioGroup>
+                  )}
+                </FormControl>
+              </>
+            );
+          })()}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={handleFecharModalClinica}>Cancelar</Button>
@@ -639,6 +769,26 @@ export default function PaymentDashboard() {
         </DialogActions>
       </Dialog>
 
+      <Dialog
+        open={modalAlertaEnderecoAberto}
+        onClose={() => setModalAlertaEnderecoAberto(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Endereço obrigatório</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Para escolher uma clínica, é necessário cadastrar seu endereço antes. Acesse a página de cadastro de endereço para continuar.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setModalAlertaEnderecoAberto(false)}>Fechar</Button>
+          <Button variant="contained" onClick={handleIrParaCadastroEndereco}>
+            Cadastrar endereço
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={alertaClinicaAberto}
         autoHideDuration={5000}
@@ -646,7 +796,7 @@ export default function PaymentDashboard() {
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert severity="warning" onClose={() => setAlertaClinicaAberto(false)}>
-          Escolha uma clínica para realizar o pagamento.
+          Selecione um procedimento para realizar o pagamento.
         </Alert>
       </Snackbar>
     </Box>

@@ -11,6 +11,8 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import MedicalIcon from "@mui/icons-material/MedicalServices";
 import HistoryIcon from "@mui/icons-material/History";
 import PaymentIcon from "@mui/icons-material/Payment";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
 import { APP_ROUTES } from "../../util/constants";
 import { useAppSelector } from "../../core/store/hooks";
 
@@ -42,6 +44,8 @@ export default function AppLayout() {
         { icon: <CalendarMonthIcon />, label: "Agendamentos", to: APP_ROUTES.PATIENT.APPOINTMENTS },
         { icon: <HistoryIcon />, label: "Histórico", to: APP_ROUTES.PATIENT.HISTORY },
         { icon: <PaymentIcon />, label: "Pagamentos", to: APP_ROUTES.PATIENT.PAYMENTS },
+        { icon: <CreditCardIcon />, label: "Meus cartões", to: APP_ROUTES.PATIENT.CARDS },
+        { icon: <LocationOnIcon />, label: "Meu endereço", to: APP_ROUTES.PATIENT.LOCATION },
       ],
     };
     return menus[role as keyof typeof menus] || [];
