@@ -4,26 +4,50 @@ import dayjs from 'dayjs';
 import { useAppSelector } from '../../core/store/hooks';
 import { useNavigate } from 'react-router';
 import { APP_ROUTES } from '../../util/constants';
-import BusinessIcon from '@mui/icons-material/Business';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 
-const PATIENT_CLINICAS_STORAGE_PREFIX = 'patient_clinicas_escolhidas_';
+const MOCK_PROCEDURES_KEY = 'mock_procedures';
+const MOCK_CLINICS_KEY = 'mock_clinics';
 
-interface ClinicaItem {
+interface ProcedimentoItem {
   id: number;
-  nomeFantasia: string;
-  nomeEmpresa: string;
+  clinicaId: number;
+  finalidade: string;
+  invasividade: string;
+  valorProcedimento: string;
+  parcelasCartao: string;
 }
 
-function loadClinicasEscolhidas(userId: number): ClinicaItem[] {
+interface ClinicaMapItem {
+  id: number;
+  nomeFantasia: string;
+}
+
+function loadAllProcedimentos(): ProcedimentoItem[] {
   try {
-    const key = PATIENT_CLINICAS_STORAGE_PREFIX + userId;
-    const stored = localStorage.getItem(key);
+    const stored = localStorage.getItem(MOCK_PROCEDURES_KEY);
     if (!stored) return [];
-    const parsed = JSON.parse(stored) as { clinicasEscolhidas?: ClinicaItem[] };
-    return Array.isArray(parsed?.clinicasEscolhidas) ? parsed.clinicasEscolhidas : [];
+    const parsed = JSON.parse(stored) as ProcedimentoItem[];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
+}
+
+function loadClinicasMap(): Map<number, ClinicaMapItem> {
+  const map = new Map<number, ClinicaMapItem>();
+  try {
+    const stored = localStorage.getItem(MOCK_CLINICS_KEY);
+    if (!stored) return map;
+    const parsed = JSON.parse(stored) as Array<{ id?: number; nomeFantasia?: string; nomeEmpresa?: string }>;
+    (parsed || []).forEach((c, i) => {
+      const id = c.id ?? i + 1;
+      map.set(id, { id, nomeFantasia: c.nomeFantasia || c.nomeEmpresa || 'Clínica' });
+    });
+  } catch {
+    // ignore
+  }
+  return map;
 }
 
 interface TransacaoPendente {
@@ -42,7 +66,8 @@ const transacoesPendentes: TransacaoPendente[] = [];
 export default function PatientDashboard() {
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id ?? 0;
-  const clinicasEscolhidas = loadClinicasEscolhidas(userId);
+  const procedimentos = loadAllProcedimentos();
+  const clinicasMap = loadClinicasMap();
   const navigate = useNavigate();
 
   return (
@@ -75,41 +100,55 @@ export default function PatientDashboard() {
         </Box>
       </Stack>
 
-      {/* Clínicas selecionadas (área de pagamentos) */}
+      {/* Procedimentos cadastrados pelas clínicas */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2 }}>
           <Box>
             <Typography variant="h6" fontWeight={600} gutterBottom>
-              Clínicas selecionadas para pagamento
+              Procedimentos cadastrados pelas clínicas
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Clínicas que você escolheu na área de pagamentos (Escolher clínica).
+              Procedimentos disponíveis nas clínicas do sistema.
             </Typography>
           </Box>
           <Button
             variant="outlined"
             size="small"
-            startIcon={<BusinessIcon />}
+            startIcon={<MedicalServicesIcon />}
             onClick={() => navigate(APP_ROUTES.PATIENT.PAYMENTS)}
           >
             Ir para Pagamentos
           </Button>
         </Box>
-        {clinicasEscolhidas.length === 0 ? (
+        {procedimentos.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-            Nenhuma clínica selecionada. Acesse a área de Pagamentos e use &quot;Escolher clínica&quot; para adicionar.
+            Nenhum procedimento cadastrado pelas clínicas no momento.
           </Typography>
         ) : (
-          <List dense disablePadding>
-            {clinicasEscolhidas.map((c) => (
-              <ListItem key={c.id} sx={{ py: 0.75, px: 0 }}>
-                <ListItemText
-                  primary={c.nomeFantasia}
-                  secondary={c.nomeEmpresa || undefined}
-                  primaryTypographyProps={{ fontWeight: 500 }}
-                />
-              </ListItem>
-            ))}
+          <List dense disablePadding sx={{ maxHeight: 320, overflow: 'auto' }}>
+            {procedimentos.map((p) => {
+              const clinica = clinicasMap.get(p.clinicaId);
+              const nomeClinica = clinica?.nomeFantasia ?? `Clínica #${p.clinicaId}`;
+              return (
+                <ListItem key={p.id} sx={{ py: 0.75, px: 0 }}>
+                  <ListItemText
+                    primary={p.finalidade || '(Sem finalidade)'}
+                    secondary={
+                      <>
+                        <Typography component="span" variant="body2" color="text.secondary">
+                          {nomeClinica}
+                        </Typography>
+                        <Typography component="span" variant="body2" color="text.secondary">
+                          {' · R$ '}{p.valorProcedimento || '0,00'}
+                          {p.parcelasCartao ? ` · até ${p.parcelasCartao}x no cartão` : ''}
+                        </Typography>
+                      </>
+                    }
+                    primaryTypographyProps={{ fontWeight: 500 }}
+                  />
+                </ListItem>
+              );
+            })}
           </List>
         )}
       </Paper>

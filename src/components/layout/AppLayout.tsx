@@ -7,7 +7,6 @@ import getTheme from "../../assets/styles/theme";
 import PeopleIcon from "@mui/icons-material/People";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import BusinessIcon from "@mui/icons-material/Business";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import MedicalIcon from "@mui/icons-material/MedicalServices";
 import HistoryIcon from "@mui/icons-material/History";
 import PaymentIcon from "@mui/icons-material/Payment";
@@ -35,13 +34,11 @@ export default function AppLayout() {
       ],
       clinic: [
         { icon: <DashboardIcon />, label: "Dashboard", to: APP_ROUTES.CLINIC.DASHBOARD },
-        { icon: <CalendarMonthIcon />, label: "Agendamentos", to: APP_ROUTES.CLINIC.APPOINTMENTS },
         { icon: <PeopleIcon />, label: "Pacientes", to: APP_ROUTES.CLINIC.PATIENTS },
         { icon: <MedicalIcon />, label: "Procedimentos", to: APP_ROUTES.CLINIC.PROCEDURES },
       ],
       patient: [
         { icon: <DashboardIcon />, label: "Início", to: APP_ROUTES.PATIENT.DASHBOARD },
-        { icon: <CalendarMonthIcon />, label: "Agendamentos", to: APP_ROUTES.PATIENT.APPOINTMENTS },
         { icon: <HistoryIcon />, label: "Histórico", to: APP_ROUTES.PATIENT.HISTORY },
         { icon: <PaymentIcon />, label: "Pagamentos", to: APP_ROUTES.PATIENT.PAYMENTS },
         { icon: <CreditCardIcon />, label: "Meus cartões", to: APP_ROUTES.PATIENT.CARDS },

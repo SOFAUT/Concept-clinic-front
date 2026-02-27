@@ -1,7 +1,6 @@
-import { Box, Container, Typography, Button, Paper, Stack, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Box, Container, Typography, Button, Paper, Stack } from '@mui/material';
 import { useNavigate } from 'react-router';
 import { APP_ROUTES } from '../../util/constants';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PeopleIcon from '@mui/icons-material/People';
 import PaymentIcon from '@mui/icons-material/Payment';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
@@ -148,54 +147,6 @@ export default function OnboardingClinic() {
               </Paper>
             ))}
           </Stack>
-
-          {/* Checklist */}
-          <Paper
-            elevation={2}
-            sx={{
-              p: 4,
-              borderRadius: 3,
-              mb: 6,
-              maxWidth: 600,
-              mx: 'auto',
-            }}
-          >
-            <Typography variant="h6" fontWeight={700} gutterBottom sx={{ mb: 3 }}>
-              Recursos Inclusos:
-            </Typography>
-            <List>
-              <ListItem>
-                <ListItemIcon>
-                  <CheckCircleIcon sx={{ color: 'success.main' }} />
-                </ListItemIcon>
-                <ListItemText primary="Dashboard administrativo completo" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <CheckCircleIcon sx={{ color: 'success.main' }} />
-                </ListItemIcon>
-                <ListItemText primary="Agendamento automático de consultas" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <CheckCircleIcon sx={{ color: 'success.main' }} />
-                </ListItemIcon>
-                <ListItemText primary="Processamento de pagamentos integrado" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <CheckCircleIcon sx={{ color: 'success.main' }} />
-                </ListItemIcon>
-                <ListItemText primary="Relatórios de faturamento detalhados" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <CheckCircleIcon sx={{ color: 'success.main' }} />
-                </ListItemIcon>
-                <ListItemText primary="Suporte técnico prioritário" />
-              </ListItem>
-            </List>
-          </Paper>
 
           {/* CTA Section */}
           <Box sx={{ textAlign: 'center', py: 4 }}>
