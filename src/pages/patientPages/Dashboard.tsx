@@ -8,6 +8,7 @@ import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 
 const MOCK_PROCEDURES_KEY = 'mock_procedures';
 const MOCK_CLINICS_KEY = 'mock_clinics';
+const CLINIC_CHARGES_STORAGE_PREFIX = 'clinic_cobrancas_';
 
 interface ProcedimentoItem {
   id: number;
@@ -21,6 +22,28 @@ interface ProcedimentoItem {
 interface ClinicaMapItem {
   id: number;
   nomeFantasia: string;
+}
+
+interface CobrancaClinica {
+  id: number;
+  clinicId: number;
+  userId: number;
+  pacienteNome: string;
+  procedimentoNome?: string;
+  dataAgendada: string;
+  valor: string;
+  parcelas: number;
+  criadaEm: string;
+}
+
+interface TransacaoPendente {
+  id: number;
+  procedimento: string;
+  clinica: string;
+  valor: string;
+  dataVencimento: string;
+  formaPagamento: 'pix' | 'cartao';
+  status: 'pendente' | 'vencido';
 }
 
 function loadAllProcedimentos(): ProcedimentoItem[] {
@@ -50,24 +73,45 @@ function loadClinicasMap(): Map<number, ClinicaMapItem> {
   return map;
 }
 
-interface TransacaoPendente {
-  id: number;
-  procedimento: string;
-  clinica: string;
-  valor: string;
-  dataVencimento: string;
-  formaPagamento: 'pix' | 'cartao';
-  status: 'pendente' | 'vencido';
+function loadTransacoesPendentes(userId: number, clinicasMap: Map<number, ClinicaMapItem>): TransacaoPendente[] {
+  if (!userId) return [];
+  const result: TransacaoPendente[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(CLINIC_CHARGES_STORAGE_PREFIX)) continue;
+      const stored = localStorage.getItem(key);
+      if (!stored) continue;
+      const parsed = JSON.parse(stored) as CobrancaClinica[];
+      if (!Array.isArray(parsed)) continue;
+      parsed
+        .filter((c) => c.userId === userId)
+        .forEach((c) => {
+          const clinicaNome =
+            clinicasMap.get(c.clinicId)?.nomeFantasia || `Clínica #${c.clinicId}`;
+          result.push({
+            id: c.id,
+            procedimento: c.procedimentoNome || 'Procedimento',
+            clinica: clinicaNome,
+            valor: `R$ ${c.valor}`,
+            dataVencimento: c.dataAgendada,
+            formaPagamento: 'cartao',
+            status: 'pendente',
+          });
+        });
+    }
+  } catch {
+    return [];
+  }
+  return result;
 }
-
-// Lista de transações pendentes – dados virão da API
-const transacoesPendentes: TransacaoPendente[] = [];
 
 export default function PatientDashboard() {
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id ?? 0;
   const procedimentos = loadAllProcedimentos();
   const clinicasMap = loadClinicasMap();
+  const transacoesPendentes = loadTransacoesPendentes(userId, clinicasMap);
   const navigate = useNavigate();
 
   return (
