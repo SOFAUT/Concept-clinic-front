@@ -34,6 +34,7 @@ const MOCK_PROCEDURES_KEY = "mock_procedures";
 const PATIENT_CLINICAS_STORAGE_PREFIX = "patient_clinicas_escolhidas_";
 const PATIENT_CARDS_STORAGE_PREFIX = "patient_cartoes_";
 const PATIENT_LOCATION_STORAGE_PREFIX = "patient_location_";
+const PATIENT_PAYMENTS_STORAGE_PREFIX = "patient_pagamentos_";
 const CLINIC_PATIENTS_STORAGE_PREFIX = "clinic_patients_";
 
 function hasPatientAddress(userId: number): boolean {
@@ -102,6 +103,40 @@ interface ProcedimentoItem {
   invasividade: string;
   valorProcedimento: string;
   parcelasCartao: string;
+}
+
+interface PagamentoHistorico {
+  id: number;
+  userId: number;
+  clinicaId: number;
+  clinicaNome: string;
+  procedimentoId?: number;
+  procedimentoNome?: string;
+  valor: string;
+  formaPagamento: FormaPagamento;
+  data: string;
+  status: string;
+}
+
+function loadPatientPayments(userId: number): PagamentoHistorico[] {
+  try {
+    const key = PATIENT_PAYMENTS_STORAGE_PREFIX + userId;
+    const stored = localStorage.getItem(key);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as PagamentoHistorico[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePatientPayments(userId: number, payments: PagamentoHistorico[]) {
+  try {
+    const key = PATIENT_PAYMENTS_STORAGE_PREFIX + userId;
+    localStorage.setItem(key, JSON.stringify(payments));
+  } catch {
+    console.error("Error saving patient payments:");
+  }
 }
 
 function loadAllProcedimentos(): ProcedimentoItem[] {
@@ -243,6 +278,8 @@ export default function PaymentDashboard() {
   const [procedimentos, setProcedimentos] = useState<ProcedimentoItem[]>([]);
   const [buscaProcedimento, setBuscaProcedimento] = useState("");
   const [filtroClinica, setFiltroClinica] = useState<"estado" | "cidade">("estado");
+  const [modalPagamentoConcluidoAberto, setModalPagamentoConcluidoAberto] = useState(false);
+  const [modalAlertaProcedimentoAberto, setModalAlertaProcedimentoAberto] = useState(false);
   const hasLoadedFromStorage = useRef(false);
 
   const procedimentosFiltrados = procedimentos.filter((p) =>
@@ -286,7 +323,47 @@ export default function PaymentDashboard() {
   };
 
   const handleConfirmar = () => {
-    console.log("Forma de pagamento:", formaPagamento, "Procedimento selecionado:", procedimentoSelecionadoId);
+    if (!procedimentoSelecionadoId) {
+      setModalAlertaProcedimentoAberto(true);
+      return;
+    }
+    if (!userId || !clinicaParaPagamentoId) {
+      setModalAberto(false);
+      setProcedimentoSelecionadoId("");
+      return;
+    }
+
+    const pagamentosAnteriores = loadPatientPayments(userId);
+    const novoId =
+      pagamentosAnteriores.length > 0 ? Math.max(...pagamentosAnteriores.map((p) => p.id)) + 1 : 1;
+
+    const clinicaIdNum = Number(clinicaParaPagamentoId);
+    const clinica =
+      clinicasEscolhidas.find((c) => c.id === clinicaIdNum) ||
+      clinicas.find((c) => c.id === clinicaIdNum) ||
+      null;
+
+    const procedimento: ProcedimentoItem | null =
+      procedimentoSelecionadoId
+        ? procedimentos.find((p) => String(p.id) === procedimentoSelecionadoId) || null
+        : null;
+
+    const novoPagamento: PagamentoHistorico = {
+      id: novoId,
+      userId,
+      clinicaId: clinicaIdNum,
+      clinicaNome: clinica?.nomeFantasia || `Clínica #${clinicaIdNum || "-"}`,
+      procedimentoId: procedimento?.id,
+      procedimentoNome: procedimento?.finalidade,
+      valor: procedimento?.valorProcedimento || "0,00",
+      formaPagamento,
+      data: new Date().toLocaleString("pt-BR"),
+      status: "Concluído",
+    };
+
+    savePatientPayments(userId, [...pagamentosAnteriores, novoPagamento]);
+    setModalPagamentoConcluidoAberto(true);
+
     setModalAberto(false);
     setProcedimentoSelecionadoId("");
   };
@@ -587,10 +664,54 @@ export default function PaymentDashboard() {
             variant="contained"
             onClick={handleConfirmar}
             disabled={
-              formaPagamento === "cartao" && cartoesDoUsuario.length > 0 && !cartaoSelecionadoId
+              !procedimentoSelecionadoId ||
+              (formaPagamento === "cartao" && cartoesDoUsuario.length > 0 && !cartaoSelecionadoId)
             }
           >
             Confirmar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={modalAlertaProcedimentoAberto}
+        onClose={() => setModalAlertaProcedimentoAberto(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Procedimento obrigatório</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Para realizar o pagamento, selecione primeiro um procedimento na lista de procedimentos disponíveis.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setModalAlertaProcedimentoAberto(false)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={modalPagamentoConcluidoAberto}
+        onClose={() => setModalPagamentoConcluidoAberto(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Pagamento concluído</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Seu pagamento foi registrado com sucesso. Você pode consultar os detalhes em Histórico de pagamentos.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setModalPagamentoConcluidoAberto(false)}>Fechar</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setModalPagamentoConcluidoAberto(false);
+              navigate(APP_ROUTES.PATIENT.PAYMENTS);
+            }}
+          >
+            Voltar para pagamentos
           </Button>
         </DialogActions>
       </Dialog>

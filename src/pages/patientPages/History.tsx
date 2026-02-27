@@ -1,10 +1,48 @@
+import { useEffect, useState } from "react";
 import { Box, Typography, Paper, Stack, List, ListItem, ListItemText, ListItemIcon } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { useAppSelector } from "../../core/store/hooks";
 
-// Lista de histórico de pagamentos – dados virão da API
-const historicoPagamentos: Array<{ id: number; data: string; clinica: string; procedimento: string; valor: string; status: string }> = [];
+const PATIENT_PAYMENTS_STORAGE_PREFIX = "patient_pagamentos_";
+
+interface PagamentoHistorico {
+  id: number;
+  userId: number;
+  clinicaId: number;
+  clinicaNome: string;
+  procedimentoId?: number;
+  procedimentoNome?: string;
+  valor: string;
+  formaPagamento: "pix" | "cartao";
+  data: string;
+  status: string;
+}
+
+function loadPatientPayments(userId: number): PagamentoHistorico[] {
+  try {
+    const key = PATIENT_PAYMENTS_STORAGE_PREFIX + userId;
+    const stored = localStorage.getItem(key);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as PagamentoHistorico[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 export default function PatientHistory() {
+  const user = useAppSelector((state) => state.auth.user);
+  const userId = user?.id ?? 0;
+  const [historicoPagamentos, setHistoricoPagamentos] = useState<PagamentoHistorico[]>([]);
+
+  useEffect(() => {
+    if (!userId) {
+      setHistoricoPagamentos([]);
+      return;
+    }
+    setHistoricoPagamentos(loadPatientPayments(userId));
+  }, [userId]);
+
   const totalPagamentos = historicoPagamentos.length;
 
   return (
@@ -57,8 +95,8 @@ export default function PatientHistory() {
                 <CheckCircleIcon color="success" fontSize="small" />
               </ListItemIcon>
               <ListItemText
-                primary={`${p.procedimento} · ${p.clinica}`}
-                secondary={`${p.data} · ${p.valor}`}
+                primary={`${p.procedimentoNome || "Pagamento"} · ${p.clinicaNome}`}
+                secondary={`${p.data} · R$ ${p.valor}`}
                 secondaryTypographyProps={{ color: "text.secondary" }}
               />
               <Typography variant="body2" color="success.main" fontWeight={600}>
