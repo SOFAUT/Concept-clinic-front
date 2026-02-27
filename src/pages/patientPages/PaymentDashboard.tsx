@@ -75,6 +75,7 @@ interface PacienteAssociadoClinica {
   userId: number;
   nome: string;
   email: string;
+  telefone?: string;
   dataAssociacao: string;
 }
 
@@ -413,6 +414,7 @@ export default function PaymentDashboard() {
         userId: user.id,
         nome: nomeCompleto,
         email: user.email ?? "",
+        telefone: user.phone ?? "",
         dataAssociacao: new Date().toISOString(),
       });
     }

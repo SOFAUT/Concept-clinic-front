@@ -48,6 +48,7 @@ interface AgendamentoPaciente {
   procedimentoId?: number;
   procedimentoNome?: string;
   dataAgendada: string;
+  status: "realizado" | "em_andamento" | "nao_realizado";
 }
 
 function loadPatientPayments(userId: number): PagamentoHistorico[] {
@@ -279,6 +280,7 @@ export default function MyAppointments() {
                 procedimentoId: pagamentoBase?.procedimentoId,
                 procedimentoNome: pagamentoBase?.procedimentoNome,
                 dataAgendada: dataAgendadaStr,
+                status: "em_andamento",
               };
               const novaLista = [...listaAtual, novoAgendamento];
               savePatientAppointments(userId, novaLista);

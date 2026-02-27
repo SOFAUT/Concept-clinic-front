@@ -38,6 +38,7 @@ export default function AppLayout() {
         { icon: <CalendarMonthIcon />, label: "Agendamentos", to: APP_ROUTES.CLINIC.APPOINTMENTS },
         { icon: <PeopleIcon />, label: "Pacientes", to: APP_ROUTES.CLINIC.PATIENTS },
         { icon: <MedicalIcon />, label: "Procedimentos", to: APP_ROUTES.CLINIC.PROCEDURES },
+        { icon: <PaymentIcon />, label: "Cobranças", to: APP_ROUTES.CLINIC.FINANCIAL },
       ],
       patient: [
         { icon: <DashboardIcon />, label: "Início", to: APP_ROUTES.PATIENT.DASHBOARD },
