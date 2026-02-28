@@ -15,29 +15,67 @@ import {
   ListItemIcon,
   Radio,
   IconButton,
+  TextField,
+  Stack,
+  Divider,
+  FormControlLabel,
+  Checkbox,
+  Chip,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import PaymentIcon from "@mui/icons-material/Payment";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ScheduleIcon from "@mui/icons-material/Schedule";
 import { useAppSelector } from "../../core/store/hooks";
+import { useNavigate } from "react-router";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
+import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
+import { APP_ROUTES } from "../../util/constants";
 
-const PATIENT_PAYMENTS_STORAGE_PREFIX = "patient_pagamentos_";
+// ========== MOCK STORAGE KEYS & HELPERS ==========
+const MOCK_PROCEDURES_KEY = "mock_procedures";
+const MOCK_CLINICS_KEY = "mock_clinics";
+const PATIENT_HIRED_PROCEDURES_PREFIX = "patient_hired_procedures_";
 const PATIENT_APPOINTMENTS_STORAGE_PREFIX = "patient_agendamentos_";
+const PATIENT_LOCATION_STORAGE_PREFIX = "patient_location_";
+const CLINIC_PATIENTS_STORAGE_PREFIX = "clinic_patients_";
+const CLINIC_APPOINTMENTS_STORAGE_PREFIX = "clinic_appointments_";
 
-interface PagamentoHistorico {
+interface ProcedimentoItem {
+  id: number;
+  clinicaId: number;
+  finalidade: string;
+  invasividade: string;
+  valorProcedimento: string;
+  parcelasCartao: string; // e.g., "6" meaning max 6 installments
+}
+
+interface ClinicaItem {
+  id: number;
+  nomeFantasia: string;
+  nomeEmpresa: string;
+  cidade: string;
+  estado: string;
+}
+
+interface HiredProcedure {
   id: number;
   userId: number;
   clinicaId: number;
   clinicaNome: string;
-  procedimentoId?: number;
-  procedimentoNome?: string;
+  procedimentoId: number;
+  procedimentoNome: string;
   valor: string;
-  formaPagamento: "pix" | "cartao";
-  data: string;
-  status: string;
+  parcelasCartao: string; // max installments allowed
+  status: "pending" | "paid" | "scheduled";
+  dataContratacao: string; // ISO date
+  dataAgendada?: string;    // ISO datetime, if scheduled
 }
 
 interface AgendamentoPaciente {
@@ -47,19 +85,90 @@ interface AgendamentoPaciente {
   clinicaNome: string;
   procedimentoId?: number;
   procedimentoNome?: string;
-  dataAgendada: string;
-  status: "realizado" | "em_andamento" | "nao_realizado";
+  dataAgendada: string; // ISO datetime
 }
 
-function loadPatientPayments(userId: number): PagamentoHistorico[] {
+interface ClinicAppointment {
+  id: number;
+  patientId: number;
+  patientName: string;
+  procedureId: number;
+  procedureName: string;
+  date: string; // ISO datetime
+}
+
+interface PacienteAssociadoClinica {
+  userId: number;
+  nome: string;
+  email: string;
+  dataAssociacao: string;
+}
+
+// ========== LOAD/SAVE FUNCTIONS (to be replaced by API) ==========
+function loadAllProcedimentos(): ProcedimentoItem[] {
   try {
-    const key = PATIENT_PAYMENTS_STORAGE_PREFIX + userId;
-    const stored = localStorage.getItem(key);
+    const stored = localStorage.getItem(MOCK_PROCEDURES_KEY);
     if (!stored) return [];
-    const parsed = JSON.parse(stored) as PagamentoHistorico[];
+    const parsed = JSON.parse(stored) as ProcedimentoItem[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+function loadClinicasFromStorage(): ClinicaItem[] {
+  try {
+    const stored = localStorage.getItem(MOCK_CLINICS_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as Array<{
+      id?: number;
+      nomeFantasia?: string;
+      nomeEmpresa?: string;
+      cidade?: string;
+      estado?: string;
+    }>;
+    return (parsed || []).map((c, i) => ({
+      id: c.id ?? i + 1,
+      nomeFantasia: c.nomeFantasia || c.nomeEmpresa || "Clínica",
+      nomeEmpresa: c.nomeEmpresa || "",
+      cidade: (c.cidade || "").toLowerCase(),
+      estado: (c.estado || "").toLowerCase(),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function loadPatientLocation(userId: number): { cidade: string; estado: string } | null {
+  try {
+    const key = PATIENT_LOCATION_STORAGE_PREFIX + userId;
+    const stored = localStorage.getItem(key);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as { cidade?: string; estado?: string };
+    if (!parsed.cidade || !parsed.estado) return null;
+    return { cidade: parsed.cidade.toLowerCase(), estado: parsed.estado.toLowerCase() };
+  } catch {
+    return null;
+  }
+}
+
+function loadHiredProcedures(userId: number): HiredProcedure[] {
+  try {
+    const key = PATIENT_HIRED_PROCEDURES_PREFIX + userId;
+    const stored = localStorage.getItem(key);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as HiredProcedure[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHiredProcedures(userId: number, list: HiredProcedure[]) {
+  try {
+    localStorage.setItem(PATIENT_HIRED_PROCEDURES_PREFIX + userId, JSON.stringify(list));
+  } catch {
+    console.error("Error saving hired procedures");
   }
 }
 
@@ -77,224 +186,499 @@ function loadPatientAppointments(userId: number): AgendamentoPaciente[] {
 
 function savePatientAppointments(userId: number, list: AgendamentoPaciente[]) {
   try {
-    const key = PATIENT_APPOINTMENTS_STORAGE_PREFIX + userId;
-    localStorage.setItem(key, JSON.stringify(list));
+    localStorage.setItem(PATIENT_APPOINTMENTS_STORAGE_PREFIX + userId, JSON.stringify(list));
   } catch {
-    console.error("Error saving patient appointments:");
+    console.error("Error saving appointments");
   }
 }
 
+function loadClinicPatients(clinicId: number): PacienteAssociadoClinica[] {
+  try {
+    const key = CLINIC_PATIENTS_STORAGE_PREFIX + clinicId;
+    const stored = localStorage.getItem(key);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as PacienteAssociadoClinica[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function addPatientToClinic(clinicId: number, patient: PacienteAssociadoClinica) {
+  const list = loadClinicPatients(clinicId);
+  if (list.some((p) => p.userId === patient.userId)) return;
+  list.push(patient);
+  try {
+    localStorage.setItem(CLINIC_PATIENTS_STORAGE_PREFIX + clinicId, JSON.stringify(list));
+  } catch {
+    console.error("Error adding patient to clinic");
+  }
+}
+
+function addClinicAppointment(clinicId: number, appointment: ClinicAppointment) {
+  const key = CLINIC_APPOINTMENTS_STORAGE_PREFIX + clinicId;
+  try {
+    const stored = localStorage.getItem(key);
+    const list = stored ? JSON.parse(stored) : [];
+    list.push(appointment);
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch {
+    console.error("Error saving clinic appointment");
+  }
+}
+
+// ========== COMPONENT ==========
 export default function MyAppointments() {
+  const navigate = useNavigate();
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id ?? 0;
 
-  const [modalAgendamentoAberto, setModalAgendamentoAberto] = useState(false);
-  const [pagamentos, setPagamentos] = useState<PagamentoHistorico[]>([]);
-  const [agendamentos, setAgendamentos] = useState<AgendamentoPaciente[]>([]);
-  const [procedimentoSelecionadoId, setProcedimentoSelecionadoId] = useState<string>("");
-  const [dataAgendamento, setDataAgendamento] = useState<Dayjs | null>(dayjs());
+  // Data states
+  const [procedimentos, setProcedimentos] = useState<ProcedimentoItem[]>([]);
+  const [clinicas, setClinicas] = useState<ClinicaItem[]>([]);
+  const [hiredProcedures, setHiredProcedures] = useState<HiredProcedure[]>([]);
+  const [appointments, setAppointments] = useState<AgendamentoPaciente[]>([]);
+  const [patientLocation, setPatientLocation] = useState<{ cidade: string; estado: string } | null>(null);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
+  // UI states for hiring
+  const [modalHireAberto, setModalHireAberto] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterByRegion, setFilterByRegion] = useState(false);
+  const [selectedProcId, setSelectedProcId] = useState<string>("");
+
+  // UI states for scheduling
+  const [modalScheduleAberto, setModalScheduleAberto] = useState(false);
+  const [selectedHiredId, setSelectedHiredId] = useState<number | null>(null);
+  const [selectedDateTime, setSelectedDateTime] = useState<Dayjs | null>(dayjs());
+
+  // Cross‑sell suggestions
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<ProcedimentoItem[]>([]);
+
+  // Load data on mount
   useEffect(() => {
-    if (!userId) {
-      setPagamentos([]);
-      setAgendamentos([]);
-      return;
+    setProcedimentos(loadAllProcedimentos());
+    setClinicas(loadClinicasFromStorage());
+    if (userId) {
+      setPatientLocation(loadPatientLocation(userId));
+      setHiredProcedures(loadHiredProcedures(userId));
+      setAppointments(loadPatientAppointments(userId));
     }
-    setPagamentos(loadPatientPayments(userId));
-    setAgendamentos(loadPatientAppointments(userId));
   }, [userId]);
 
-  const procedimentosUnicos = useMemo(() => {
-    const map = new Map<number, PagamentoHistorico>();
-    pagamentos.forEach((p) => {
-      if (!p.procedimentoId) return;
-      if (!map.has(p.procedimentoId)) {
-        map.set(p.procedimentoId, p);
-      }
+  // Merge clinic names into procedures
+  const procedimentosComClinica = useMemo(() => {
+    return procedimentos.map((p) => {
+      const clinica = clinicas.find((c) => c.id === p.clinicaId);
+      return {
+        ...p,
+        clinicaNome: clinica?.nomeFantasia || `Clínica ${p.clinicaId}`,
+        clinicaCidade: clinica?.cidade || "",
+        clinicaEstado: clinica?.estado || "",
+      };
     });
-    const base = Array.from(map.values());
-    // Impede mais de um agendamento para o mesmo procedimento:
-    // remove procedimentos que já possuem agendamento salvo.
-    return base.filter(
-      (p) => !agendamentos.some((a) => a.procedimentoId === p.procedimentoId)
+  }, [procedimentos, clinicas]);
+
+  // Filter procedures for hiring modal
+  const procedimentosFiltrados = useMemo(() => {
+    let filtered = procedimentosComClinica;
+    if (filterByRegion && patientLocation) {
+      filtered = filtered.filter(
+        (p) =>
+          p.clinicaCidade === patientLocation.cidade &&
+          p.clinicaEstado === patientLocation.estado
+      );
+    }
+    if (searchTerm) {
+      filtered = filtered.filter((p) =>
+        (p.finalidade || "").toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return filtered;
+  }, [procedimentosComClinica, filterByRegion, patientLocation, searchTerm]);
+
+  // Group hired procedures by status
+  const pendingProcedures = hiredProcedures.filter((p) => p.status === "pending");
+  const paidProcedures = hiredProcedures.filter((p) => p.status === "paid");
+  const scheduledProcedures = hiredProcedures.filter((p) => p.status === "scheduled");
+
+  // Handlers
+  const handleHire = () => {
+    if (!selectedProcId || !userId || !user) return;
+    const proc = procedimentosComClinica.find((p) => String(p.id) === selectedProcId);
+    if (!proc) return;
+
+    // Add patient to clinic (first time)
+    const nomeCompleto = [user.first_name, user.last_name].filter(Boolean).join(" ").trim() || user.email || `Paciente ${user.id}`;
+    addPatientToClinic(proc.clinicaId, {
+      userId: user.id,
+      nome: nomeCompleto,
+      email: user.email ?? "",
+      dataAssociacao: new Date().toISOString(),
+    });
+
+    // Create hired procedure (pending)
+    const newHired: HiredProcedure = {
+      id: Date.now(),
+      userId,
+      clinicaId: proc.clinicaId,
+      clinicaNome: proc.clinicaNome,
+      procedimentoId: proc.id,
+      procedimentoNome: proc.finalidade,
+      valor: proc.valorProcedimento,
+      parcelasCartao: proc.parcelasCartao,
+      status: "pending",
+      dataContratacao: new Date().toISOString(),
+    };
+    const updated = [...hiredProcedures, newHired];
+    setHiredProcedures(updated);
+    saveHiredProcedures(userId, updated);
+    setModalHireAberto(false);
+    setSelectedProcId("");
+    setSearchTerm("");
+    setSnackbar({ open: true, message: "Procedimento contratado! Vá para pagamentos.", severity: "success" });
+  };
+
+  const handleSchedule = (hiredId: number) => {
+    setSelectedHiredId(hiredId);
+    const hired = hiredProcedures.find((h) => h.id === hiredId);
+    if (hired) {
+      // Load cross‑sell suggestions: other procedures from the same clinic, not yet hired
+      const otherProcs = procedimentosComClinica.filter(
+        (p) =>
+          p.clinicaId === hired.clinicaId &&
+          p.id !== hired.procedimentoId &&
+          !hiredProcedures.some((h) => h.procedimentoId === p.id && h.status !== "scheduled")
+      );
+      setSuggestions(otherProcs);
+      setShowSuggestions(otherProcs.length > 0);
+    }
+    setModalScheduleAberto(true);
+    setSelectedDateTime(dayjs()); // default to now, but disabled past
+  };
+
+  const handleAddSuggestion = (procId: number) => {
+    if (!userId || !user) return;
+    const proc = procedimentosComClinica.find((p) => p.id === procId);
+    if (!proc) return;
+
+    // Add to hired procedures (pending)
+    const newHired: HiredProcedure = {
+      id: Date.now() + Math.random(),
+      userId,
+      clinicaId: proc.clinicaId,
+      clinicaNome: proc.cllinicaNome,
+      procedimentoId: proc.id,
+      procedimentoNome: proc.finalidade,
+      valor: proc.valorProcedimento,
+      parcelasCartao: proc.parcelasCartao,
+      status: "pending",
+      dataContratacao: new Date().toISOString(),
+    };
+    const updated = [...hiredProcedures, newHired];
+    setHiredProcedures(updated);
+    saveHiredProcedures(userId, updated);
+    // Remove from suggestions
+    setSuggestions(suggestions.filter((s) => s.id !== procId));
+    setSnackbar({ open: true, message: "Serviço adicional contratado!", severity: "success" });
+  };
+
+  const confirmSchedule = () => {
+    if (!selectedHiredId || !selectedDateTime || !userId || !user) return;
+    const hired = hiredProcedures.find((h) => h.id === selectedHiredId);
+    if (!hired) return;
+
+    // Update hired procedure status
+    const updatedHired = hiredProcedures.map((h) =>
+      h.id === selectedHiredId
+        ? { ...h, status: "scheduled", dataAgendada: selectedDateTime.toISOString() }
+        : h
     );
-  }, [pagamentos, agendamentos]);
+    setHiredProcedures(updatedHired);
+    saveHiredProcedures(userId, updatedHired);
+
+    // Create patient appointment
+    const appointmentsNow = loadPatientAppointments(userId);
+    const newAppt: AgendamentoPaciente = {
+      id: Date.now(),
+      userId,
+      clinicaId: hired.clinicaId,
+      clinicaNome: hired.clinicaNome,
+      procedimentoId: hired.procedimentoId,
+      procedimentoNome: hired.procedimentoNome,
+      dataAgendada: selectedDateTime.toISOString(),
+    };
+    const updatedAppts = [...appointmentsNow, newAppt];
+    setAppointments(updatedAppts);
+    savePatientAppointments(userId, updatedAppts);
+
+    // Create clinic appointment
+    addClinicAppointment(hired.clinicaId, {
+      id: Date.now(),
+      patientId: userId,
+      patientName: `${user.first_name} ${user.last_name}`.trim(),
+      procedureId: hired.procedimentoId,
+      procedureName: hired.procedimentoNome,
+      date: selectedDateTime.toISOString(),
+    });
+
+    setModalScheduleAberto(false);
+    setSelectedHiredId(null);
+    setShowSuggestions(false);
+    setSnackbar({ open: true, message: "Agendamento confirmado!", severity: "success" });
+  };
 
   return (
-    <Box>
-      <Box mb={3}>
-        <Typography variant="h4" fontWeight={700}>
-          Meus Agendamentos
-        </Typography>
-      </Box>
-      
-      <Paper sx={{ p: 3 }}>
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 2,
-          }}
+    <Box sx={{ mt: { xs: 7, sm: 8 } }}>
+      <Typography variant="h4" fontWeight={700} mb={3}>
+        Meus Agendamentos
+      </Typography>
+
+      {/* Botão para contratar novo procedimento */}
+      <Box display="flex" justifyContent="flex-end" mb={3}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setModalHireAberto(true)}
         >
-          <Typography color="text.secondary">
-            {agendamentos.length === 0
-              ? "Você não possui agendamentos."
-              : "Seus agendamentos:"}
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setModalAgendamentoAberto(true)}
-            disabled={procedimentosUnicos.length === 0}
-          >
-            Realizar agendamento
-          </Button>
-        </Box>
+          Contratar novo procedimento
+        </Button>
+      </Box>
 
-        {agendamentos.length > 0 && (
-          <List dense disablePadding sx={{ mt: 2 }}>
-            {agendamentos.map((a) => (
-              <ListItem
-                key={a.id}
-                sx={{ py: 0.75 }}
-                secondaryAction={
-                  <IconButton
-                    edge="end"
-                    aria-label="Excluir agendamento"
-                    onClick={() => {
-                      if (!userId) return;
-                      const novaLista = agendamentos.filter((item) => item.id !== a.id);
-                      setAgendamentos(novaLista);
-                      savePatientAppointments(userId, novaLista);
-                    }}
-                    size="small"
-                  >
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-                }
-              >
-                <ListItemText
-                  primary={(a.procedimentoNome || "Procedimento") + (a.clinicaNome ? ` · ${a.clinicaNome}` : "")}
-                  secondary={`Data: ${dayjs(a.dataAgendada).format("DD/MM/YYYY")}`}
-                  secondaryTypographyProps={{ color: "text.secondary" }}
-                />
-              </ListItem>
-            ))}
-          </List>
+      {/* Seções agrupadas */}
+      <Stack spacing={3}>
+        {/* Pendentes (aguardando pagamento) */}
+        {pendingProcedures.length > 0 && (
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              Aguardando pagamento
+            </Typography>
+            <List>
+              {pendingProcedures.map((h) => (
+                <ListItem
+                  key={h.id}
+                  secondaryAction={
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<PaymentIcon />}
+                      onClick={() => navigate(APP_ROUTES.PATIENT.PAYMENTS)}
+                    >
+                      Pagar
+                    </Button>
+                  }
+                >
+                  <ListItemText
+                    primary={h.procedimentoNome}
+                    secondary={`${h.clinicaNome} · R$ ${h.valor} · até ${h.parcelasCartao}x`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
         )}
-      </Paper>
 
+        {/* Pagos (aguardando agendamento) */}
+        {paidProcedures.length > 0 && (
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              Pagos – agendar data
+            </Typography>
+            <List>
+              {paidProcedures.map((h) => (
+                <ListItem
+                  key={h.id}
+                  secondaryAction={
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<ScheduleIcon />}
+                      onClick={() => handleSchedule(h.id)}
+                    >
+                      Agendar
+                    </Button>
+                  }
+                >
+                  <ListItemText
+                    primary={h.procedimentoNome}
+                    secondary={h.clinicaNome}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        )}
+
+        {/* Agendados */}
+        {scheduledProcedures.length > 0 && (
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              Agendados
+            </Typography>
+            <List>
+              {scheduledProcedures.map((h) => (
+                <ListItem key={h.id}>
+                  <ListItemIcon>
+                    <CheckCircleIcon color="success" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={h.procedimentoNome}
+                    secondary={`${h.clinicaNome} · Data: ${
+                      h.dataAgendada ? dayjs(h.dataAgendada).format("DD/MM/YYYY [às] HH:mm") : ""
+                    }`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        )}
+      </Stack>
+
+      {/* Modal de contratação */}
       <Dialog
-        open={modalAgendamentoAberto}
-        onClose={() => setModalAgendamentoAberto(false)}
+        open={modalHireAberto}
+        onClose={() => setModalHireAberto(false)}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Escolher procedimento para agendamento</DialogTitle>
+        <DialogTitle>Contratar procedimento</DialogTitle>
         <DialogContent>
-          {procedimentosUnicos.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-              Nenhum procedimento pago encontrado. Realize um pagamento primeiro para poder agendar.
+          <TextField
+            fullWidth
+            label="Buscar procedimento"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ mb: 2, mt: 1 }}
+          />
+          {patientLocation && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={filterByRegion}
+                  onChange={(e) => setFilterByRegion(e.target.checked)}
+                />
+              }
+              label={`Mostrar apenas clínicas na minha região (${patientLocation.cidade} - ${patientLocation.estado.toUpperCase()})`}
+              sx={{ mb: 2 }}
+            />
+          )}
+          {!patientLocation && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Cadastre seu endereço para filtrar por região.
+            </Typography>
+          )}
+          {procedimentosFiltrados.length === 0 ? (
+            <Typography color="text.secondary">
+              Nenhum procedimento encontrado.
             </Typography>
           ) : (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Selecione um dos procedimentos que você já pagou e escolha a data para realizar o agendamento.
-              </Typography>
-              <Box sx={{ mb: 2, display: "flex", justifyContent: "center" }}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DateCalendar
-                    value={dataAgendamento}
-                    onChange={(newValue: Dayjs | null) => setDataAgendamento(newValue)}
-                  />
-                </LocalizationProvider>
-              </Box>
-              <List dense disablePadding sx={{ maxHeight: 320, overflow: "auto" }}>
-                {procedimentosUnicos.map((p) => (
-                  <ListItemButton
-                    key={p.procedimentoId}
-                    selected={String(p.procedimentoId) === procedimentoSelecionadoId}
-                    onClick={() => setProcedimentoSelecionadoId(String(p.procedimentoId))}
-                    sx={{ py: 0.75 }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 40 }}>
-                      <Radio
-                        checked={String(p.procedimentoId) === procedimentoSelecionadoId}
-                        value={String(p.procedimentoId)}
-                        name="procedimento-agendamento"
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={p.procedimentoNome || "Procedimento"}
-                      secondary={
-                        <>
-                          <Typography component="span" variant="body2" color="text.secondary">
-                            {p.clinicaNome}
-                          </Typography>
-                          <Typography component="span" variant="body2" color="text.secondary">
-                            {" · R$ "}{p.valor}
-                          </Typography>
-                        </>
-                      }
-                      primaryTypographyProps={{ variant: "body2" }}
-                      secondaryTypographyProps={{ component: "div" }}
+            <List dense sx={{ maxHeight: 400, overflow: "auto" }}>
+              {procedimentosFiltrados.map((p) => (
+                <ListItemButton
+                  key={p.id}
+                  selected={String(p.id) === selectedProcId}
+                  onClick={() => setSelectedProcId(String(p.id))}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <Radio
+                      checked={String(p.id) === selectedProcId}
+                      value={String(p.id)}
                     />
-                  </ListItemButton>
-                ))}
-              </List>
-            </>
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={p.finalidade}
+                    secondary={`${p.clinicaNome} · R$ ${p.valorProcedimento} · até ${p.parcelasCartao}x`}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setModalAgendamentoAberto(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            disabled={!procedimentoSelecionadoId || !dataAgendamento}
-            onClick={() => {
-              if (!userId || !procedimentoSelecionadoId || !dataAgendamento) {
-                setModalAgendamentoAberto(false);
-                return;
-              }
-              // Defesa extra: impede mais de um agendamento para o mesmo procedimento.
-              const procedimentoIdNum = Number(procedimentoSelecionadoId);
-              if (agendamentos.some((a) => a.procedimentoId === procedimentoIdNum)) {
-                setModalAgendamentoAberto(false);
-                return;
-              }
-              const dataAgendadaStr = dataAgendamento.format("YYYY-MM-DD");
-              const listaAtual = loadPatientAppointments(userId);
-              const novoId =
-                listaAtual.length > 0
-                  ? Math.max(...listaAtual.map((a) => a.id)) + 1
-                  : 1;
-              const pagamentoBase = procedimentosUnicos.find(
-                (p) => String(p.procedimentoId) === procedimentoSelecionadoId
-              );
-              const novoAgendamento: AgendamentoPaciente = {
-                id: novoId,
-                userId,
-                clinicaId: pagamentoBase?.clinicaId ?? 0,
-                clinicaNome: pagamentoBase?.clinicaNome ?? "",
-                procedimentoId: pagamentoBase?.procedimentoId,
-                procedimentoNome: pagamentoBase?.procedimentoNome,
-                dataAgendada: dataAgendadaStr,
-                status: "em_andamento",
-              };
-              const novaLista = [...listaAtual, novoAgendamento];
-              savePatientAppointments(userId, novaLista);
-              setAgendamentos(novaLista);
-              setModalAgendamentoAberto(false);
-              setProcedimentoSelecionadoId("");
-              setDataAgendamento(dayjs());
-            }}
-          >
-            Continuar
+        <DialogActions>
+          <Button onClick={() => setModalHireAberto(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleHire} disabled={!selectedProcId}>
+            Contratar
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Modal de agendamento */}
+      <Dialog
+        open={modalScheduleAberto}
+        onClose={() => setModalScheduleAberto(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Escolher data e horário</DialogTitle>
+        <DialogContent>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Stack spacing={3} sx={{ mt: 2 }}>
+              <DateCalendar
+                value={selectedDateTime}
+                onChange={(newDate) => setSelectedDateTime(newDate)}
+                disablePast
+              />
+              <TimePicker
+                label="Horário"
+                value={selectedDateTime}
+                onChange={(newValue) => setSelectedDateTime(newValue)}
+                minutesStep={30}
+                ampm={false}
+              />
+            </Stack>
+          </LocalizationProvider>
+
+          {/* Cross‑sell suggestions */}
+          {showSuggestions && suggestions.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Outros serviços desta clínica
+              </Typography>
+              <List dense>
+                {suggestions.map((s) => (
+                  <ListItem
+                    key={s.id}
+                    secondaryAction={
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleAddSuggestion(s.id)}
+                      >
+                        Adicionar
+                      </Button>
+                    }
+                  >
+                    <ListItemText
+                      primary={s.finalidade}
+                      secondary={`R$ ${s.valorProcedimento} · até ${s.parcelasCartao}x`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalScheduleAberto(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={confirmSchedule}>
+            Confirmar Agendamento
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={5000}
+        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
   );
 }
-

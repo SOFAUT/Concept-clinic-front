@@ -107,7 +107,7 @@ export default function Profile() {
   }
 
   return (
-    <Box>
+    <Box sx={{ mt: { xs: 7, sm: 8 } }}> {/* Margem superior para evitar sobreposição com o cabeçalho */}
       {/* Header com título clicável */}
       <Box
         sx={{
@@ -265,4 +265,3 @@ export default function Profile() {
     </Box>
   );
 }
-

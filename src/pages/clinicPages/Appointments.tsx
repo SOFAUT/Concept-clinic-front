@@ -3,7 +3,7 @@ import AddIcon from '@mui/icons-material/Add';
 
 export default function Appointments() {
   return (
-    <Box>
+    <Box sx={{ mt: { xs: 7, sm: 8 } }}> {/* ← Adicionado margin-top responsivo */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight={700}>
           Agendamentos
@@ -21,4 +21,3 @@ export default function Appointments() {
     </Box>
   );
 }
-

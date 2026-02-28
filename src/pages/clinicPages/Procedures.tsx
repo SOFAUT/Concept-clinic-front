@@ -115,21 +115,12 @@ export default function Procedures() {
   };
 
   return (
-    <Box>
+    <Box sx={{ mt: { xs: 7, sm: 8 } }}> {/* Margem superior para evitar sobreposição com o cabeçalho */}
       <Typography variant="h4" fontWeight={700} mb={3}>
         Procedimentos
       </Typography>
 
-      <Paper sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCadastrarProcedimento}
-        >
-          Cadastrar procedimento
-        </Button>
-      </Paper>
-
+      {/* Lista de procedimentos */}
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" color="text.secondary" gutterBottom>
           Procedimentos cadastrados
@@ -171,6 +162,17 @@ export default function Procedures() {
           </List>
         )}
       </Paper>
+
+      {/* Botão posicionado no canto inferior direito */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleCadastrarProcedimento}
+        >
+          Cadastrar procedimento
+        </Button>
+      </Box>
 
       <Dialog open={modalAberto} onClose={handleFecharModal} maxWidth="sm" fullWidth>
         <DialogTitle>Cadastrar procedimento</DialogTitle>
@@ -251,4 +253,3 @@ export default function Procedures() {
     </Box>
   );
 }
-

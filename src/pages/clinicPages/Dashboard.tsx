@@ -37,7 +37,7 @@ export default function ClinicDashboard() {
   const totalPacientes = new Set(mockProcedures.map(p => p.paciente)).size;
 
   return (
-    <Box>
+    <Box sx={{ mt: { xs: 7, sm: 8 } }}> {/* ← Margem superior adicionada */}
       <Typography variant="h4" fontWeight={700} mb={3}>
         Dashboard - Clínica
       </Typography>
@@ -104,4 +104,3 @@ export default function ClinicDashboard() {
     </Box>
   );
 }
-

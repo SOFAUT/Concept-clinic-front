@@ -46,7 +46,7 @@ export default function PatientHistory() {
   const totalPagamentos = historicoPagamentos.length;
 
   return (
-    <Box>
+    <Box sx={{ mt: { xs: 7, sm: 8 } }}> {/* Margem superior para evitar sobreposição com o cabeçalho */}
       <Typography variant="h4" fontWeight={700} mb={3}>
         Histórico
       </Typography>

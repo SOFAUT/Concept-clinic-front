@@ -164,7 +164,7 @@ export default function Home() {
                 overflow: "hidden",
                 boxShadow: 4,
                 backgroundImage:
-                  "linear-gradient(135deg, rgba(59,130,246,0.7), rgba(236,72,153,0.7)), url('https://images.unsplash.com/photo-1584466977773-e625c37cdd50?auto=format&fit=crop&w=1200&q=80')",
+                  "linear-gradient(135deg, rgba(59,130,246,0.7), rgba(236,72,153,0.7)), url('https://sercirurgiaplastica.com.br/uploads/images/2021/08/saiba-como-escolher-uma-clinica-de-cirurgia-plastica-em-sao-paulo-1629953750.jpg')",
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}
