@@ -14,18 +14,15 @@ import {
   ListItemText,
   ListItemIcon,
   Radio,
-  IconButton,
   TextField,
   Stack,
   Divider,
   FormControlLabel,
   Checkbox,
-  Chip,
   Snackbar,
   Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import PaymentIcon from "@mui/icons-material/Payment";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ScheduleIcon from "@mui/icons-material/Schedule";
@@ -237,7 +234,7 @@ export default function MyAppointments() {
   const [procedimentos, setProcedimentos] = useState<ProcedimentoItem[]>([]);
   const [clinicas, setClinicas] = useState<ClinicaItem[]>([]);
   const [hiredProcedures, setHiredProcedures] = useState<HiredProcedure[]>([]);
-  const [appointments, setAppointments] = useState<AgendamentoPaciente[]>([]);
+  const [, setAppointments] = useState<AgendamentoPaciente[]>([]);
   const [patientLocation, setPatientLocation] = useState<{ cidade: string; estado: string } | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
     open: false,
@@ -372,7 +369,7 @@ export default function MyAppointments() {
       id: Date.now() + Math.random(),
       userId,
       clinicaId: proc.clinicaId,
-      clinicaNome: proc.cllinicaNome,
+      clinicaNome: proc.clinicaNome,
       procedimentoId: proc.id,
       procedimentoNome: proc.finalidade,
       valor: proc.valorProcedimento,
@@ -394,9 +391,9 @@ export default function MyAppointments() {
     if (!hired) return;
 
     // Update hired procedure status
-    const updatedHired = hiredProcedures.map((h) =>
+    const updatedHired: HiredProcedure[] = hiredProcedures.map((h) =>
       h.id === selectedHiredId
-        ? { ...h, status: "scheduled", dataAgendada: selectedDateTime.toISOString() }
+        ? { ...h, status: "scheduled" as const, dataAgendada: selectedDateTime.toISOString() }
         : h
     );
     setHiredProcedures(updatedHired);
