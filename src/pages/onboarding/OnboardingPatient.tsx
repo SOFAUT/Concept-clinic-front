@@ -66,21 +66,47 @@ export default function OnboardingPatient() {
         </Container>
       </Box>
 
-      {/* Hero Section */}
+      {/* Hero Banner com imagem e efeito parallax */}
       <Box
         sx={{
-          bgcolor: (theme) => theme.palette.mode === 'dark' ? '#1E232F' : 'primary.main',
-          color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'white',
-          py: { xs: 6, md: 8 },
+          position: 'relative',
+          minHeight: { xs: 320, md: 420 },
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          color: 'white',
           textAlign: 'center',
         }}
       >
-        <Container maxWidth="lg">
+        {/* Imagem de fundo – atendimento ao paciente / estética */}
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=1920)`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            backgroundAttachment: { xs: 'scroll', md: 'fixed' },
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.82) 0%, rgba(2, 136, 209, 0.78) 50%, rgba(0, 0, 0, 0.55) 100%)',
+            },
+          }}
+        />
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1, py: { xs: 6, md: 8 } }}>
           <Typography
             variant="h2"
             fontWeight={700}
             gutterBottom
-            sx={{ fontSize: { xs: 32, md: 48 } }}
+            sx={{
+              fontSize: { xs: 32, md: 48 },
+              textShadow: '0 2px 20px rgba(0,0,0,0.3)',
+              letterSpacing: '-0.02em',
+            }}
           >
             Sua Saúde, Nossa Prioridade
           </Typography>
@@ -88,10 +114,11 @@ export default function OnboardingPatient() {
             variant="h6"
             sx={{
               opacity: 0.95,
-              mb: 4,
+              mb: 0,
               maxWidth: 600,
               mx: 'auto',
               fontSize: { xs: 16, md: 20 },
+              textShadow: '0 1px 10px rgba(0,0,0,0.25)',
             }}
           >
             Realize seus pagamentos e agendamentos com nosso sistema de pagamentos moderno e seguro.

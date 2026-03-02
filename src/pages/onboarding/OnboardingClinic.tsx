@@ -65,21 +65,47 @@ export default function OnboardingClinic() {
         </Container>
       </Box>
 
-      {/* Hero Section */}
+      {/* Hero Banner com imagem e efeito parallax */}
       <Box
         sx={{
-          bgcolor: (theme) => theme.palette.mode === 'dark' ? '#1E232F' : 'secondary.main',
-          color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'white',
-          py: { xs: 6, md: 8 },
+          position: 'relative',
+          minHeight: { xs: 320, md: 420 },
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          color: 'white',
           textAlign: 'center',
         }}
       >
-        <Container maxWidth="lg">
+        {/* Imagem de fundo – clínica de estética / atendimento */}
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1920)`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            backgroundAttachment: { xs: 'scroll', md: 'fixed' },
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.85) 0%, rgba(13, 71, 161, 0.75) 50%, rgba(0, 0, 0, 0.6) 100%)',
+            },
+          }}
+        />
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1, py: { xs: 6, md: 8 } }}>
           <Typography
             variant="h2"
             fontWeight={700}
             gutterBottom
-            sx={{ fontSize: { xs: 32, md: 48 } }}
+            sx={{
+              fontSize: { xs: 32, md: 48 },
+              textShadow: '0 2px 20px rgba(0,0,0,0.3)',
+              letterSpacing: '-0.02em',
+            }}
           >
             Transforme Sua Clínica
           </Typography>
@@ -87,10 +113,11 @@ export default function OnboardingClinic() {
             variant="h6"
             sx={{
               opacity: 0.95,
-              mb: 4,
+              mb: 0,
               maxWidth: 600,
               mx: 'auto',
               fontSize: { xs: 16, md: 20 },
+              textShadow: '0 1px 10px rgba(0,0,0,0.25)',
             }}
           >
             Facilite os pagamentos de seus clientes com nossa nova solução de sistema de pagamentos integrado.
