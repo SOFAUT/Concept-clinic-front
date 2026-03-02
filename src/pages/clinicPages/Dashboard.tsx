@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Stack } from '@mui/material';
 import { FaturamentoBarChart } from '../../components/charts/FaturamentoBarChart';
+import { FaturamentoPieChart } from '../../components/charts/FaturamentoPieChart';
 import { useAppSelector } from '../../core/store/hooks';
 
 const PATIENT_APPOINTMENTS_STORAGE_PREFIX = 'patient_agendamentos_';
@@ -180,6 +181,39 @@ function getFaturamentoPorMesClinic(clinicId: number): Array<{ mes: string; valo
   return buckets.map((b) => ({ mes: b.mes, valor: b.valor }));
 }
 
+/** Faturamento agregado por nome do procedimento (para gráfico de pizza) */
+function getFaturamentoPorProcedimento(clinicId: number): Array<{ name: string; value: number }> {
+  const map = new Map<string, number>();
+  if (!clinicId) return [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(PATIENT_PAYMENTS_STORAGE_PREFIX)) continue;
+    const stored = localStorage.getItem(key);
+    if (!stored) continue;
+    try {
+      const list = JSON.parse(stored) as Array<{
+        clinicaId?: number;
+        procedimentoNome?: string;
+        valor?: string;
+      }>;
+      if (!Array.isArray(list)) continue;
+      list
+        .filter((p) => p.clinicaId === clinicId)
+        .forEach((p) => {
+          const name = (p.procedimentoNome || 'Outros').trim();
+          const current = map.get(name) ?? 0;
+          map.set(name, current + parseValorToNumber(p.valor ?? '0'));
+        });
+    } catch {
+      // ignore
+    }
+  }
+  return Array.from(map.entries())
+    .map(([name, value]) => ({ name, value }))
+    .filter((d) => d.value > 0)
+    .sort((a, b) => b.value - a.value);
+}
+
 export default function ClinicDashboard() {
   const user = useAppSelector((state) => state.auth.user);
   const clinicId = user?.id ?? 0;
@@ -189,6 +223,7 @@ export default function ClinicDashboard() {
   const [totalProcedimentos, setTotalProcedimentos] = useState(0);
   const [receitaMes, setReceitaMes] = useState(0);
   const [faturamentoPorMes, setFaturamentoPorMes] = useState<Array<{ mes: string; valor: number }>>([]);
+  const [faturamentoPorProcedimento, setFaturamentoPorProcedimento] = useState<Array<{ name: string; value: number }>>([]);
 
   const refresh = () => {
     setTotalAgendamentos(countAppointmentsForClinic(clinicId));
@@ -196,6 +231,7 @@ export default function ClinicDashboard() {
     setTotalProcedimentos(countProceduresForClinic(clinicId));
     setReceitaMes(getReceitaMesClinic(clinicId));
     setFaturamentoPorMes(getFaturamentoPorMesClinic(clinicId));
+    setFaturamentoPorProcedimento(getFaturamentoPorProcedimento(clinicId));
   };
 
   useEffect(() => {
@@ -273,16 +309,42 @@ export default function ClinicDashboard() {
         </Box>
       </Stack>
 
-      {/* Gráfico de barras – Faturamento por mês (D3.js) */}
+      {/* Box única: gráfico de barras (65%) + gráfico de pizza por procedimento (35%) */}
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" fontWeight={600} gutterBottom>
-          Faturamento por mês (R$)
+          Faturamento
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Valores em reais – últimos meses
+          Por mês (últimos 12 meses) e por procedimento (valores pagos à clínica)
         </Typography>
-        <Box sx={{ width: '100%', maxWidth: 700 }}>
-          <FaturamentoBarChart data={faturamentoPorMes} width={700} height={320} />
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '65% 35%' },
+            gap: 3,
+            alignItems: 'start',
+            width: '100%',
+          }}
+        >
+          <Box sx={{ width: '100%', overflow: 'auto' }}>
+            <FaturamentoBarChart data={faturamentoPorMes} width={700} height={320} />
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              width: '100%',
+              color: 'text.primary',
+            }}
+          >
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Por procedimento (pago à clínica)
+            </Typography>
+            <Box component="span" sx={{ color: 'text.primary' }}>
+              <FaturamentoPieChart data={faturamentoPorProcedimento} width={280} height={280} />
+            </Box>
+          </Box>
         </Box>
       </Paper>
     </Box>
