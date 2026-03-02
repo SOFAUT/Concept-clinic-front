@@ -198,18 +198,49 @@ export default function PaymentDashboard() {
   const handlePay = () => {
     if (!selectedProcedure || !userId || !user) return;
 
+    // Quantidade total de parcelas e já pagas antes deste pagamento
+    const totalInstallments = selectedProcedure.installmentsTotal != null
+      ? selectedProcedure.installmentsTotal
+      : (parseInt(selectedProcedure.parcelasCartao || "1", 10) || 1);
+    const alreadyPaidBefore = selectedProcedure.installmentsPaid != null
+      ? selectedProcedure.installmentsPaid
+      : (selectedProcedure.status === "paid" ? totalInstallments : 0);
+    const clampedAlreadyPaidBefore = Math.min(totalInstallments, Math.max(0, alreadyPaidBefore));
+    const remainingBefore = Math.max(0, totalInstallments - clampedAlreadyPaidBefore);
+
+    // Se não há parcelas restantes, não deve permitir novo pagamento
+    if (remainingBefore <= 0) {
+      setSnackbar({
+        open: true,
+        message: "Nenhuma parcela restante para pagar.",
+        severity: "error",
+      });
+      setModalPagamentoAberto(false);
+      return;
+    }
+
+    // Quantas parcelas o usuário está tentando pagar agora
+    const requestedInstallments = formaPagamento === "cartao" ? installments : 1;
+    const installmentsToPay = Math.min(remainingBefore, requestedInstallments);
+
+    // Atualiza o procedimento contratado respeitando o limite de parcelas restantes
     const allHired = loadHiredProcedures(userId);
     const updatedHired = allHired.map((h) => {
       if (h.id !== selectedProcedure.id) return h;
-      const totalInstallments = h.installmentsTotal != null
+      const hTotalInstallments = h.installmentsTotal != null
         ? h.installmentsTotal
         : (parseInt(h.parcelasCartao || "1", 10) || 1);
-      const alreadyPaid = h.installmentsPaid ?? (h.status === "paid" ? totalInstallments : 0);
-      const nextPaid = Math.min(totalInstallments, alreadyPaid + 1);
-      const fullyPaid = nextPaid >= totalInstallments;
+      const hAlreadyPaid = h.installmentsPaid != null
+        ? h.installmentsPaid
+        : (h.status === "paid" ? hTotalInstallments : 0);
+      const hClampedAlreadyPaid = Math.min(hTotalInstallments, Math.max(0, hAlreadyPaid));
+      const hRemaining = Math.max(0, hTotalInstallments - hClampedAlreadyPaid);
+      const hToPay = Math.min(hRemaining, installmentsToPay);
+      const nextPaid = hClampedAlreadyPaid + hToPay;
+      const fullyPaid = nextPaid >= hTotalInstallments;
       return {
         ...h,
-        installmentsTotal: totalInstallments,
+        installmentsTotal: hTotalInstallments,
         installmentsPaid: nextPaid,
         status: fullyPaid ? ("paid" as const) : ("pending" as const),
       };
@@ -217,17 +248,34 @@ export default function PaymentDashboard() {
     saveHiredProcedures(userId, updatedHired);
     setPendingProcedures(updatedHired);
 
-    // Create patient payment history
-    const payments = loadPatientPayments(userId);
+    // Dados atualizados do procedimento após o pagamento
     const selectedAfterUpdate = updatedHired.find((h) => h.id === selectedProcedure.id)!;
-    const totalInstallments = selectedAfterUpdate.installmentsTotal != null
+    const updatedTotalInstallments = selectedAfterUpdate.installmentsTotal != null
       ? selectedAfterUpdate.installmentsTotal
       : (parseInt(selectedAfterUpdate.parcelasCartao || "1", 10) || 1);
+    const updatedAlreadyPaid = selectedAfterUpdate.installmentsPaid != null
+      ? selectedAfterUpdate.installmentsPaid
+      : (selectedAfterUpdate.status === "paid" ? updatedTotalInstallments : 0);
+
+    // Quantas parcelas foram efetivamente pagas nesta operação
+    const installmentsPaidNow = Math.max(
+      0,
+      updatedAlreadyPaid - clampedAlreadyPaidBefore
+    );
+
+    // Valor por parcela e valor total deste pagamento
+    const totalValue =
+      parseFloat(
+        selectedAfterUpdate.valor.replace(".", "").replace(",", ".")
+      ) || 0;
     const perInstallmentValue =
-      totalInstallments > 1
-        ? (parseFloat(selectedAfterUpdate.valor.replace(".", "").replace(",", ".")) || 0) /
-          totalInstallments
-        : parseFloat(selectedAfterUpdate.valor.replace(".", "").replace(",", ".")) || 0;
+      updatedTotalInstallments > 0
+        ? totalValue / updatedTotalInstallments
+        : totalValue;
+    const amountPaid = installmentsPaidNow * perInstallmentValue;
+
+    // Histórico de pagamento do paciente
+    const payments = loadPatientPayments(userId);
     const newPayment: PagamentoHistorico = {
       id: Date.now(),
       userId,
@@ -235,29 +283,34 @@ export default function PaymentDashboard() {
       clinicaNome: selectedAfterUpdate.clinicaNome,
       procedimentoId: selectedAfterUpdate.procedimentoId,
       procedimentoNome: selectedAfterUpdate.procedimentoNome,
-      valor: perInstallmentValue.toFixed(2).replace(".", ","),
+      valor: amountPaid.toFixed(2).replace(".", ","),
       formaPagamento,
-      parcelas: totalInstallments,
+      parcelas: updatedTotalInstallments,
       data: new Date().toLocaleString("pt-BR"),
       status:
-        selectedAfterUpdate.installmentsPaid &&
-        selectedAfterUpdate.installmentsPaid >= totalInstallments
+        updatedAlreadyPaid >= updatedTotalInstallments
           ? "Concluído"
-          : `Parcela ${selectedAfterUpdate.installmentsPaid}/${totalInstallments}`,
+          : installmentsPaidNow > 1
+          ? `${installmentsPaidNow} parcelas pagas (${updatedAlreadyPaid}/${updatedTotalInstallments})`
+          : `Parcela ${updatedAlreadyPaid}/${updatedTotalInstallments}`,
     };
     savePatientPayments(userId, [...payments, newPayment]);
 
-    // Create clinic payment record
-    const nomeCompleto = [user.first_name, user.last_name].filter(Boolean).join(" ").trim() || user.email || `Paciente ${user.id}`;
+    // Registro de pagamento para a clínica
+    const nomeCompleto =
+      [user.first_name, user.last_name].filter(Boolean).join(" ").trim() ||
+      user.email ||
+      `Paciente ${user.id}`;
     addClinicPayment(selectedProcedure.clinicaId, {
       id: Date.now(),
       patientId: userId,
       patientName: nomeCompleto,
       procedureId: selectedProcedure.procedimentoId,
       procedureName: selectedProcedure.procedimentoNome,
-      amount: selectedProcedure.valor,
+      amount: amountPaid.toFixed(2).replace(".", ","),
       method: formaPagamento,
-      installments: formaPagamento === "cartao" ? installments : undefined,
+      installments:
+        formaPagamento === "cartao" ? installmentsPaidNow : undefined,
       date: new Date().toISOString(),
     });
 
@@ -269,9 +322,36 @@ export default function PaymentDashboard() {
     setModalPagamentoAberto(false);
   };
 
-  // Generate installments options based on selected procedure's max
-  const maxInstallments = selectedProcedure ? parseInt(selectedProcedure.parcelasCartao) || 1 : 1;
-  const installmentOptions = Array.from({ length: maxInstallments }, (_, i) => i + 1);
+  // Opções de parcelas respeitando o que já foi pago
+  const maxInstallments = selectedProcedure
+    ? (selectedProcedure.installmentsTotal != null
+        ? selectedProcedure.installmentsTotal
+        : (parseInt(selectedProcedure.parcelasCartao || "1", 10) || 1))
+    : 1;
+
+  const alreadyPaidForSelected = selectedProcedure
+    ? (selectedProcedure.installmentsPaid != null
+        ? selectedProcedure.installmentsPaid
+        : (selectedProcedure.status === "paid" ? maxInstallments : 0))
+    : 0;
+
+  const clampedAlreadyPaidForSelected = Math.min(
+    maxInstallments,
+    Math.max(0, alreadyPaidForSelected)
+  );
+
+  const remainingInstallmentsForSelected = Math.max(
+    0,
+    maxInstallments - clampedAlreadyPaidForSelected
+  );
+
+  const installmentOptions =
+    remainingInstallmentsForSelected > 0
+      ? Array.from(
+          { length: remainingInstallmentsForSelected },
+          (_, i) => i + 1
+        )
+      : [];
 
   return (
     <Box sx={{ mt: { xs: 7, sm: 8 } }}>
@@ -501,7 +581,8 @@ export default function PaymentDashboard() {
             onClick={handlePay}
             disabled={
               !selectedProcedure ||
-              (formaPagamento === "cartao" && cartoes.length > 0 && !selectedCardId)
+              (formaPagamento === "cartao" && cartoes.length > 0 && !selectedCardId) ||
+              (formaPagamento === "cartao" && installmentOptions.length === 0)
             }
           >
             Pagar
