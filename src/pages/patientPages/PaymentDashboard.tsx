@@ -23,8 +23,11 @@ import {
   Select,
   MenuItem,
   InputLabel,
+  LinearProgress,
+  IconButton,
 } from "@mui/material";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useNavigate } from "react-router";
 import { useAppSelector } from "../../core/store/hooks";
 import { APP_ROUTES } from "../../util/constants";
@@ -44,9 +47,13 @@ interface HiredProcedure {
   procedimentoNome: string;
   valor: string;
   parcelasCartao: string; // max installments
+  installmentsTotal?: number; // total parcels (for parcelado)
+  installmentsPaid?: number;  // how many parcels already paid
   status: "pending" | "paid" | "scheduled";
   dataContratacao: string;
   dataAgendada?: string;
+  /** Quando true, o paciente não vê mais este item na lista (oculto, não removido) */
+  hiddenByPatient?: boolean;
 }
 
 interface CartaoSalvo {
@@ -167,9 +174,18 @@ export default function PaymentDashboard() {
   useEffect(() => {
     if (!userId) return;
     const hired = loadHiredProcedures(userId);
-    setPendingProcedures(hired.filter((p) => p.status === "pending"));
+    setPendingProcedures(hired);
     setCartoes(loadPatientCards(userId));
   }, [userId]);
+
+  const hideProcedureFromPatient = (proc: HiredProcedure) => {
+    const allHired = loadHiredProcedures(userId);
+    const updated = allHired.map((h) =>
+      h.id === proc.id ? { ...h, hiddenByPatient: true } : h
+    );
+    saveHiredProcedures(userId, updated);
+    setPendingProcedures(updated);
+  };
 
   const openPaymentModal = (proc: HiredProcedure) => {
     setSelectedProcedure(proc);
@@ -182,28 +198,52 @@ export default function PaymentDashboard() {
   const handlePay = () => {
     if (!selectedProcedure || !userId || !user) return;
 
-    // Update hired procedure status to paid
     const allHired = loadHiredProcedures(userId);
-    const updatedHired = allHired.map((h) =>
-      h.id === selectedProcedure.id ? { ...h, status: "paid" as const } : h
-    );
+    const updatedHired = allHired.map((h) => {
+      if (h.id !== selectedProcedure.id) return h;
+      const totalInstallments = h.installmentsTotal != null
+        ? h.installmentsTotal
+        : (parseInt(h.parcelasCartao || "1", 10) || 1);
+      const alreadyPaid = h.installmentsPaid ?? (h.status === "paid" ? totalInstallments : 0);
+      const nextPaid = Math.min(totalInstallments, alreadyPaid + 1);
+      const fullyPaid = nextPaid >= totalInstallments;
+      return {
+        ...h,
+        installmentsTotal: totalInstallments,
+        installmentsPaid: nextPaid,
+        status: fullyPaid ? ("paid" as const) : ("pending" as const),
+      };
+    });
     saveHiredProcedures(userId, updatedHired);
-    setPendingProcedures(updatedHired.filter((p) => p.status === "pending"));
+    setPendingProcedures(updatedHired);
 
     // Create patient payment history
     const payments = loadPatientPayments(userId);
+    const selectedAfterUpdate = updatedHired.find((h) => h.id === selectedProcedure.id)!;
+    const totalInstallments = selectedAfterUpdate.installmentsTotal != null
+      ? selectedAfterUpdate.installmentsTotal
+      : (parseInt(selectedAfterUpdate.parcelasCartao || "1", 10) || 1);
+    const perInstallmentValue =
+      totalInstallments > 1
+        ? (parseFloat(selectedAfterUpdate.valor.replace(".", "").replace(",", ".")) || 0) /
+          totalInstallments
+        : parseFloat(selectedAfterUpdate.valor.replace(".", "").replace(",", ".")) || 0;
     const newPayment: PagamentoHistorico = {
       id: Date.now(),
       userId,
-      clinicaId: selectedProcedure.clinicaId,
-      clinicaNome: selectedProcedure.clinicaNome,
-      procedimentoId: selectedProcedure.procedimentoId,
-      procedimentoNome: selectedProcedure.procedimentoNome,
-      valor: selectedProcedure.valor,
+      clinicaId: selectedAfterUpdate.clinicaId,
+      clinicaNome: selectedAfterUpdate.clinicaNome,
+      procedimentoId: selectedAfterUpdate.procedimentoId,
+      procedimentoNome: selectedAfterUpdate.procedimentoNome,
+      valor: perInstallmentValue.toFixed(2).replace(".", ","),
       formaPagamento,
-      parcelas: formaPagamento === "cartao" ? installments : undefined,
+      parcelas: totalInstallments,
       data: new Date().toLocaleString("pt-BR"),
-      status: "Concluído",
+      status:
+        selectedAfterUpdate.installmentsPaid &&
+        selectedAfterUpdate.installmentsPaid >= totalInstallments
+          ? "Concluído"
+          : `Parcela ${selectedAfterUpdate.installmentsPaid}/${totalInstallments}`,
     };
     savePatientPayments(userId, [...payments, newPayment]);
 
@@ -244,30 +284,95 @@ export default function PaymentDashboard() {
           <Typography variant="h6" fontWeight={600} gutterBottom>
             Procedimentos pendentes
           </Typography>
-          {pendingProcedures.length === 0 ? (
+          {pendingProcedures.filter((p) => !p.hiddenByPatient && p.status !== "scheduled").length === 0 ? (
             <Typography color="text.secondary">
               Nenhum pagamento pendente.
             </Typography>
           ) : (
             <List>
-              {pendingProcedures.map((proc) => (
-                <ListItem
-                  key={proc.id}
-                  secondaryAction={
-                    <Button
-                      variant="contained"
-                      onClick={() => openPaymentModal(proc)}
+              {pendingProcedures
+                .filter(
+                  (proc) =>
+                    !proc.hiddenByPatient &&
+                    (proc.status === "pending" || proc.status === "paid")
+                )
+                .map((proc) => {
+                  const totalInstallments = proc.installmentsTotal != null
+                    ? proc.installmentsTotal
+                    : (parseInt(proc.parcelasCartao || "1", 10) || 1);
+                  const paidInstallments = proc.installmentsPaid != null
+                    ? proc.installmentsPaid
+                    : (proc.status === "paid" ? totalInstallments : 0);
+                  const clampedPaid = Math.min(totalInstallments, Math.max(0, paidInstallments));
+                  const isPaid = clampedPaid >= totalInstallments;
+                  const progress =
+                    totalInstallments > 0
+                      ? (clampedPaid / totalInstallments) * 100
+                      : isPaid
+                      ? 100
+                      : 0;
+                  return (
+                    <ListItem
+                      key={proc.id}
+                      secondaryAction={
+                        <Stack direction="row" alignItems="center" spacing={0.5}>
+                          {isPaid && (
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => hideProcedureFromPatient(proc)}
+                              aria-label="Ocultar da lista"
+                              title="Excluir da lista (oculta para você)"
+                            >
+                              <DeleteOutlineIcon />
+                            </IconButton>
+                          )}
+                          <Button
+                            variant="contained"
+                            onClick={() => openPaymentModal(proc)}
+                            disabled={isPaid}
+                          >
+                            {isPaid ? "Pago" : "Pagar"}
+                          </Button>
+                        </Stack>
+                      }
                     >
-                      Pagar
-                    </Button>
-                  }
-                >
-                  <ListItemText
-                    primary={proc.procedimentoNome}
-                    secondary={`${proc.clinicaNome} · R$ ${proc.valor}`}
-                  />
-                </ListItem>
-              ))}
+                      <ListItemText
+                        primary={proc.procedimentoNome}
+                        secondary={
+                          <>
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              {proc.clinicaNome} · R$ {proc.valor}
+                            </Typography>
+                            <Box sx={{ mt: 1 }}>
+                              <LinearProgress
+                                variant="determinate"
+                                value={progress}
+                                sx={{
+                                  height: 8,
+                                  borderRadius: 999,
+                                  bgcolor: "action.hover",
+                                  maxWidth: "70%",
+                                }}
+                              />
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ mt: 0.5, display: "block" }}
+                              >
+                                {isPaid
+                                  ? "Pagamento concluído (100%)"
+                                  : totalInstallments > 1
+                                  ? `Pago ${clampedPaid}/${totalInstallments} parcelas`
+                                  : "Aguardando pagamento"}
+                              </Typography>
+                            </Box>
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  );
+                })}
             </List>
           )}
         </Paper>

@@ -21,17 +21,22 @@ import {
   Checkbox,
   Snackbar,
   Alert,
+  IconButton,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import PaymentIcon from "@mui/icons-material/Payment";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ScheduleIcon from "@mui/icons-material/Schedule";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useAppSelector } from "../../core/store/hooks";
 import { useNavigate } from "react-router";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { PickersDay } from "@mui/x-date-pickers/PickersDay";
+import type { PickersDayProps } from "@mui/x-date-pickers/PickersDay";
+import { loadClinicUnavailableDays, loadClinicIncludeWeekends } from "../clinicPages/Appointments";
 import dayjs, { Dayjs } from "dayjs";
 import { APP_ROUTES } from "../../util/constants";
 
@@ -70,9 +75,13 @@ interface HiredProcedure {
   procedimentoNome: string;
   valor: string;
   parcelasCartao: string; // max installments allowed
+  installmentsTotal?: number; // total parcels (for parcelado)
+  installmentsPaid?: number;  // how many parcels already paid
   status: "pending" | "paid" | "scheduled";
   dataContratacao: string; // ISO date
   dataAgendada?: string;    // ISO datetime, if scheduled
+  /** Quando true, o paciente não vê mais este item na lista (oculto, não removido) */
+  hiddenByPatient?: boolean;
 }
 
 interface AgendamentoPaciente {
@@ -265,6 +274,32 @@ function loadClinicAppointmentTimesOnDate(clinicId: number, date: Dayjs): Dayjs[
   return result;
 }
 
+/** Dia no calendário do paciente: em vermelho quando a clínica marcou como sem atendimento ou final de semana (se opção ativa) */
+function PatientCalendarDay(
+  props: PickersDayProps & { unavailableDays?: string[]; includeWeekends?: boolean }
+) {
+  const { unavailableDays = [], includeWeekends = false, day, ...other } = props;
+  const key = day.format("YYYY-MM-DD");
+  const isWeekend = day.day() === 0 || day.day() === 6;
+  const isUnavailable =
+    unavailableDays.includes(key) || (includeWeekends && isWeekend);
+  return (
+    <PickersDay
+      {...other}
+      day={day}
+      sx={
+        isUnavailable
+          ? {
+              bgcolor: "error.main",
+              color: "error.contrastText",
+              "&.Mui-disabled": { bgcolor: "error.main", color: "error.contrastText", opacity: 0.9 },
+            }
+          : undefined
+      }
+    />
+  );
+}
+
 // ========== COMPONENT ==========
 export default function MyAppointments() {
   const navigate = useNavigate();
@@ -288,6 +323,8 @@ export default function MyAppointments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterByRegion, setFilterByRegion] = useState(false);
   const [selectedProcId, setSelectedProcId] = useState<string>("");
+  const [modalParceladoAberto, setModalParceladoAberto] = useState(false);
+  const [parcelasSelecionadas, setParcelasSelecionadas] = useState<number>(1);
 
   // UI states for scheduling
   const [modalScheduleAberto, setModalScheduleAberto] = useState(false);
@@ -354,9 +391,10 @@ export default function MyAppointments() {
   }, [procedimentosComClinica, filterByRegion, patientLocation, searchTerm]);
 
   // Group hired procedures by status
-  const pendingProcedures = hiredProcedures.filter((p) => p.status === "pending");
-  const paidProcedures = hiredProcedures.filter((p) => p.status === "paid");
-  const scheduledProcedures = hiredProcedures.filter((p) => p.status === "scheduled");
+  const visibleHired = hiredProcedures.filter((h) => !h.hiddenByPatient);
+  const pendingProcedures = visibleHired.filter((p) => p.status === "pending");
+  const paidProcedures = visibleHired.filter((p) => p.status === "paid");
+  const scheduledProcedures = visibleHired.filter((p) => p.status === "scheduled");
 
   // Handlers
   const handleHire = () => {
@@ -393,6 +431,81 @@ export default function MyAppointments() {
     setSelectedProcId("");
     setSearchTerm("");
     setSnackbar({ open: true, message: "Procedimento contratado! Vá para pagamentos.", severity: "success" });
+  };
+
+  const handleOpenParcelado = () => {
+    if (!selectedProcId) {
+      setSnackbar({
+        open: true,
+        message: "Selecione um procedimento para contratar com pagamento parcelado.",
+        severity: "error",
+      });
+      return;
+    }
+    const proc = procedimentosComClinica.find((p) => String(p.id) === selectedProcId);
+    const maxParcelasProcedimento = proc ? parseInt(proc.parcelasCartao || "1", 10) || 1 : 1;
+    const maxParcelas = Math.min(10, maxParcelasProcedimento || 1);
+    setParcelasSelecionadas(maxParcelas);
+    setModalParceladoAberto(true);
+  };
+
+  const handleConfirmParcelado = () => {
+    if (!selectedProcId || !userId || !user) return;
+    const proc = procedimentosComClinica.find((p) => String(p.id) === selectedProcId);
+    if (!proc) return;
+
+    const maxParcelasProcedimento = parseInt(proc.parcelasCartao || "1", 10) || 1;
+    const maxParcelas = Math.min(10, maxParcelasProcedimento || 1);
+    const nParcelas = Math.min(maxParcelas, Math.max(1, parcelasSelecionadas));
+
+    const nomeCompleto =
+      [user.first_name, user.last_name].filter(Boolean).join(" ").trim() ||
+      user.email ||
+      `Paciente ${user.id}`;
+
+    addPatientToClinic(proc.clinicaId, {
+      userId: user.id,
+      nome: nomeCompleto,
+      email: user.email ?? "",
+      dataAssociacao: new Date().toISOString(),
+    });
+
+    const newHired: HiredProcedure = {
+      id: Date.now(),
+      userId,
+      clinicaId: proc.clinicaId,
+      clinicaNome: proc.clinicaNome,
+      procedimentoId: proc.id,
+      procedimentoNome: proc.finalidade,
+      valor: proc.valorProcedimento,
+      parcelasCartao: String(nParcelas),
+      installmentsTotal: nParcelas,
+      installmentsPaid: 0,
+      status: "pending",
+      dataContratacao: new Date().toISOString(),
+    };
+
+    const updated = [...hiredProcedures, newHired];
+    setHiredProcedures(updated);
+    saveHiredProcedures(userId, updated);
+
+    setModalParceladoAberto(false);
+    setModalHireAberto(false);
+    setSelectedProcId("");
+    setSearchTerm("");
+    setSnackbar({
+      open: true,
+      message: "Procedimento contratado com pagamento parcelado. Vá para a área de pagamentos.",
+      severity: "success",
+    });
+  };
+
+  const hideProcedureFromPatient = (proc: HiredProcedure) => {
+    const updated = hiredProcedures.map((h) =>
+      h.id === proc.id ? { ...h, hiddenByPatient: true } : h
+    );
+    setHiredProcedures(updated);
+    if (userId) saveHiredProcedures(userId, updated);
   };
 
   const handleSchedule = (hiredId: number) => {
@@ -561,14 +674,25 @@ export default function MyAppointments() {
                 <ListItem
                   key={h.id}
                   secondaryAction={
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<ScheduleIcon />}
-                      onClick={() => handleSchedule(h.id)}
-                    >
-                      Agendar
-                    </Button>
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => hideProcedureFromPatient(h)}
+                        aria-label="Ocultar da lista"
+                        title="Excluir da lista (oculta para você)"
+                      >
+                        <DeleteOutlineIcon />
+                      </IconButton>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<ScheduleIcon />}
+                        onClick={() => handleSchedule(h.id)}
+                      >
+                        Agendar
+                      </Button>
+                    </Stack>
                   }
                 >
                   <ListItemText
@@ -668,8 +792,63 @@ export default function MyAppointments() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setModalHireAberto(false)}>Cancelar</Button>
+          <Button onClick={handleOpenParcelado} disabled={!selectedProcId}>
+            Pagamento parcelado
+          </Button>
           <Button variant="contained" onClick={handleHire} disabled={!selectedProcId}>
             Contratar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de pagamento parcelado na contratação */}
+      <Dialog
+        open={modalParceladoAberto}
+        onClose={() => setModalParceladoAberto(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Pagamento parcelado</DialogTitle>
+        <DialogContent>
+          {selectedProcId && (
+            <Box sx={{ mb: 2, p: 2, bgcolor: "action.hover", borderRadius: 1 }}>
+              {(() => {
+                const proc = procedimentosComClinica.find((p) => String(p.id) === selectedProcId);
+                if (!proc) return null;
+                const maxParcelasProcedimento = parseInt(proc.parcelasCartao || "1", 10) || 1;
+                const maxParcelas = Math.min(10, maxParcelasProcedimento || 1);
+                return (
+                  <>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {proc.finalidade}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {proc.clinicaNome} · R$ {proc.valorProcedimento} · até {maxParcelas}x no cartão
+                    </Typography>
+                  </>
+                );
+              })()}
+            </Box>
+          )}
+          <TextField
+            fullWidth
+            type="number"
+            label="Número de parcelas"
+            value={parcelasSelecionadas}
+            onChange={(e) => setParcelasSelecionadas(Number(e.target.value) || 1)}
+            inputProps={{ min: 1, max: 10 }}
+            helperText="Escolha em quantas vezes deseja dividir (até 10x, limitado pelo máximo do procedimento)."
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalParceladoAberto(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmParcelado}
+            disabled={!selectedProcId}
+          >
+            Confirmar pagamento parcelado
           </Button>
         </DialogActions>
       </Dialog>
@@ -689,7 +868,33 @@ export default function MyAppointments() {
                 value={selectedDateTime}
                 onChange={(newDate) => setSelectedDateTime(newDate)}
                 disablePast
+                shouldDisableDate={(date) => {
+                  const hired = selectedHiredId ? hiredProcedures.find((h) => h.id === selectedHiredId) : null;
+                  if (!hired) return false;
+                  const unavailable = loadClinicUnavailableDays(hired.clinicaId);
+                  const includeWeekends = loadClinicIncludeWeekends(hired.clinicaId);
+                  const key = dayjs(date).format("YYYY-MM-DD");
+                  const d = dayjs(date);
+                  const isWeekend = d.day() === 0 || d.day() === 6;
+                  return unavailable.includes(key) || (includeWeekends && isWeekend);
+                }}
+                slots={{ day: PatientCalendarDay }}
+                slotProps={{
+                  day: (() => {
+                    const hired = selectedHiredId
+                      ? hiredProcedures.find((h) => h.id === selectedHiredId)
+                      : null;
+                    const clinicId = hired?.clinicaId ?? 0;
+                    return {
+                      unavailableDays: loadClinicUnavailableDays(clinicId),
+                      includeWeekends: loadClinicIncludeWeekends(clinicId),
+                    } as object;
+                  })(),
+                }}
               />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+                Dias em vermelho: clínica sem atendimento (não é possível agendar).
+              </Typography>
               <TimePicker
                 label="Horário (08:00–12:00 e 13:00–18:00, intervalo de 2h entre agendamentos)"
                 value={selectedDateTime}
