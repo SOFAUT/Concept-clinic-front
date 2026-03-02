@@ -224,6 +224,47 @@ function addClinicAppointment(clinicId: number, appointment: ClinicAppointment) 
   }
 }
 
+/** Horários permitidos: 08:00–12:00 e 13:00–18:00 (intervalos de 1h: 8,9,10,11 e 13,14,15,16,17) */
+const ALLOWED_MORNING_HOURS = [8, 9, 10, 11];
+const ALLOWED_AFTERNOON_HOURS = [13, 14, 15, 16, 17];
+const MIN_INTERVAL_HOURS = 2;
+
+function isTimeInAllowedWindows(d: Dayjs): boolean {
+  const hour = d.hour();
+  const minute = d.minute();
+  if (minute !== 0 && minute !== 30) return false;
+  return ALLOWED_MORNING_HOURS.includes(hour) || ALLOWED_AFTERNOON_HOURS.includes(hour);
+}
+
+function isAtLeast2HoursFromAll(candidate: Dayjs, existing: Dayjs[]): boolean {
+  return existing.every((t) => Math.abs(candidate.diff(t, "hour", true)) >= MIN_INTERVAL_HOURS);
+}
+
+/** Retorna todos os horários de agendamento da clínica em uma determinada data (qualquer paciente) */
+function loadClinicAppointmentTimesOnDate(clinicId: number, date: Dayjs): Dayjs[] {
+  const dateStr = date.format("YYYY-MM-DD");
+  const result: Dayjs[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(PATIENT_APPOINTMENTS_STORAGE_PREFIX)) continue;
+    const stored = localStorage.getItem(key);
+    if (!stored) continue;
+    try {
+      const list = JSON.parse(stored) as AgendamentoPaciente[];
+      if (!Array.isArray(list)) continue;
+      list
+        .filter((a) => a.clinicaId === clinicId)
+        .forEach((a) => {
+          const d = dayjs(a.dataAgendada);
+          if (d.format("YYYY-MM-DD") === dateStr) result.push(d);
+        });
+    } catch {
+      // ignore
+    }
+  }
+  return result;
+}
+
 // ========== COMPONENT ==========
 export default function MyAppointments() {
   const navigate = useNavigate();
@@ -252,6 +293,8 @@ export default function MyAppointments() {
   const [modalScheduleAberto, setModalScheduleAberto] = useState(false);
   const [selectedHiredId, setSelectedHiredId] = useState<number | null>(null);
   const [selectedDateTime, setSelectedDateTime] = useState<Dayjs | null>(dayjs());
+  /** Horários já agendados na clínica no dia selecionado (para validar intervalo de 2h) */
+  const [existingTimesOnSelectedDate, setExistingTimesOnSelectedDate] = useState<Dayjs[]>([]);
 
   // Cross‑sell suggestions
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -267,6 +310,17 @@ export default function MyAppointments() {
       setAppointments(loadPatientAppointments(userId));
     }
   }, [userId]);
+
+  // Ao abrir o modal de agendamento ou mudar a data, carregar horários já ocupados na clínica naquele dia
+  useEffect(() => {
+    if (!modalScheduleAberto || !selectedHiredId || !selectedDateTime) {
+      setExistingTimesOnSelectedDate([]);
+      return;
+    }
+    const hired = hiredProcedures.find((h) => h.id === selectedHiredId);
+    if (!hired) return;
+    setExistingTimesOnSelectedDate(loadClinicAppointmentTimesOnDate(hired.clinicaId, selectedDateTime));
+  }, [modalScheduleAberto, selectedHiredId, selectedDateTime, hiredProcedures]);
 
   // Merge clinic names into procedures
   const procedimentosComClinica = useMemo(() => {
@@ -345,7 +399,6 @@ export default function MyAppointments() {
     setSelectedHiredId(hiredId);
     const hired = hiredProcedures.find((h) => h.id === hiredId);
     if (hired) {
-      // Load cross‑sell suggestions: other procedures from the same clinic, not yet hired
       const otherProcs = procedimentosComClinica.filter(
         (p) =>
           p.clinicaId === hired.clinicaId &&
@@ -356,7 +409,7 @@ export default function MyAppointments() {
       setShowSuggestions(otherProcs.length > 0);
     }
     setModalScheduleAberto(true);
-    setSelectedDateTime(dayjs()); // default to now, but disabled past
+    setSelectedDateTime(dayjs()); 
   };
 
   const handleAddSuggestion = (procId: number) => {
@@ -389,6 +442,23 @@ export default function MyAppointments() {
     if (!selectedHiredId || !selectedDateTime || !userId || !user) return;
     const hired = hiredProcedures.find((h) => h.id === selectedHiredId);
     if (!hired) return;
+
+    if (!isTimeInAllowedWindows(selectedDateTime)) {
+      setSnackbar({
+        open: true,
+        message: "Horário fora do expediente. Escolha entre 08:00–12:00 e 13:00–18:00.",
+        severity: "error",
+      });
+      return;
+    }
+    if (!isAtLeast2HoursFromAll(selectedDateTime, existingTimesOnSelectedDate)) {
+      setSnackbar({
+        open: true,
+        message: "Este horário está a menos de 2 horas de outro agendamento. Escolha outro horário.",
+        severity: "error",
+      });
+      return;
+    }
 
     // Update hired procedure status
     const updatedHired: HiredProcedure[] = hiredProcedures.map((h) =>
@@ -621,11 +691,26 @@ export default function MyAppointments() {
                 disablePast
               />
               <TimePicker
-                label="Horário"
+                label="Horário (08:00–12:00 e 13:00–18:00, intervalo de 2h entre agendamentos)"
                 value={selectedDateTime}
                 onChange={(newValue) => setSelectedDateTime(newValue)}
+                minTime={dayjs().hour(8).minute(0).second(0)}
+                maxTime={dayjs().hour(18).minute(0).second(0)}
                 minutesStep={30}
                 ampm={false}
+                shouldDisableTime={(value, view) => {
+                  if (!value) return false;
+                  if (view === "hours") {
+                    const h = value.hour();
+                    return !ALLOWED_MORNING_HOURS.includes(h) && !ALLOWED_AFTERNOON_HOURS.includes(h);
+                  }
+                  if (view === "minutes") {
+                    const m = value.minute();
+                    if (m !== 0 && m !== 30) return true;
+                    return !isTimeInAllowedWindows(value) || !isAtLeast2HoursFromAll(value, existingTimesOnSelectedDate);
+                  }
+                  return false;
+                }}
               />
             </Stack>
           </LocalizationProvider>
