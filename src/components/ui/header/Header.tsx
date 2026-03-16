@@ -21,7 +21,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({
   onMenuClick,
   collapsed,
-  title = "Clínica Estética",
+  title = "Clínica Estética X",
   onToggleTheme,
   themeMode,
 }) => {

@@ -29,7 +29,7 @@ function LandingHeader() {
         }}
       >
         <Typography variant="h6" fontWeight={700}>
-          Concept Clinic
+          Clinica Estética X
         </Typography>
 
         <Box sx={{ display: "flex", gap: 1 }}>
