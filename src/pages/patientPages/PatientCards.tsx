@@ -12,9 +12,11 @@ import {
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useAppSelector } from "../../core/store/hooks";
-import { Link } from "react-router";
-import { APP_ROUTES } from "../../util/constants";
 import Button from "@mui/material/Button";
+import {
+  CreditCardModal,
+  type CreditCardFormValues,
+} from "../../components/patient/CreditCardModal";
 
 const PATIENT_CARDS_STORAGE_PREFIX = "patient_cartoes_";
 
@@ -24,6 +26,7 @@ interface CartaoSalvo {
   nomeTitular: string;
   ultimosQuatroDigitos: string;
   validade: string;
+  bandeira?: "mastercard" | "visa";
 }
 
 function loadPatientCards(userId: number): CartaoSalvo[] {
@@ -55,6 +58,7 @@ export default function PatientCards() {
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id ?? 0;
   const [cartoes, setCartoes] = useState<CartaoSalvo[]>([]);
+  const [modalCadastroAberto, setModalCadastroAberto] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -66,6 +70,32 @@ export default function PatientCards() {
     const atualizados = cartoes.filter((c) => c.id !== id);
     setCartoes(atualizados);
     savePatientCards(userId, atualizados);
+  };
+
+  const handleSalvarCartao = ({
+    nomeTitular,
+    numeroCartao,
+    validade,
+    bandeira,
+  }: CreditCardFormValues) => {
+    if (!userId) return;
+
+    const numeroSomenteDigitos = numeroCartao.replace(/\D/g, "");
+    const ultimosQuatro = numeroSomenteDigitos.slice(-4);
+
+    const novoCartao: CartaoSalvo = {
+      id: Date.now(),
+      userId,
+      nomeTitular: nomeTitular.trim(),
+      ultimosQuatroDigitos: ultimosQuatro,
+      validade: validade.trim(),
+      bandeira,
+    };
+
+    const atualizados = [...cartoes, novoCartao];
+    setCartoes(atualizados);
+    savePatientCards(userId, atualizados);
+    setModalCadastroAberto(false);
   };
 
   return (
@@ -111,7 +141,7 @@ export default function PatientCards() {
                 </ListItemIcon>
                 <ListItemText
                   primary={formatCardDisplay(c.ultimosQuatroDigitos)}
-                  secondary={`${c.nomeTitular} · Val. ${c.validade || "—"}`}
+                  secondary={`${c.nomeTitular} · Val. ${c.validade || "—"}${c.bandeira ? ` · ${c.bandeira === "mastercard" ? "Mastercard" : "Visa"}` : ""}`}
                   primaryTypographyProps={{ variant: "body1", fontFamily: "monospace" }}
                   secondaryTypographyProps={{ variant: "body2", color: "text.secondary" }}
                 />
@@ -122,15 +152,19 @@ export default function PatientCards() {
 
         <Box sx={{ mt: 2 }}>
           <Button
-            component={Link}
-            to={APP_ROUTES.PATIENT.PAYMENTS}
             variant="outlined"
             startIcon={<CreditCardIcon />}
+            onClick={() => setModalCadastroAberto(true)}
           >
-            Ir para Pagamentos
+            Cadastrar cartão
           </Button>
         </Box>
       </Paper>
+      <CreditCardModal
+        open={modalCadastroAberto}
+        onClose={() => setModalCadastroAberto(false)}
+        onSave={handleSalvarCartao}
+      />
     </Box>
   );
 }

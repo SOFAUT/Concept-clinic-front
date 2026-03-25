@@ -7,12 +7,18 @@ import {
   DialogActions,
   TextField,
   Button,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from "@mui/material";
 
 export interface CreditCardFormValues {
   nomeTitular: string;
   numeroCartao: string;
   validade: string;
+  bandeira: "mastercard" | "visa";
 }
 
 interface CreditCardModalProps {
@@ -29,12 +35,14 @@ export function CreditCardModal({
   const [nomeTitular, setNomeTitular] = useState("");
   const [numeroCartao, setNumeroCartao] = useState("");
   const [validade, setValidade] = useState("");
+  const [bandeira, setBandeira] = useState<"mastercard" | "visa">("mastercard");
 
   useEffect(() => {
     if (open) {
       setNomeTitular("");
       setNumeroCartao("");
       setValidade("");
+      setBandeira("mastercard");
     }
   }, [open]);
 
@@ -51,6 +59,7 @@ export function CreditCardModal({
       nomeTitular: nomeTitular.trim(),
       numeroCartao,
       validade: validade.trim(),
+      bandeira,
     });
   };
 
@@ -78,6 +87,23 @@ export function CreditCardModal({
             value={validade}
             onChange={(event) => setValidade(event.target.value)}
           />
+          <FormControl component="fieldset">
+            <FormLabel component="legend">Bandeira do cartão</FormLabel>
+            <RadioGroup
+              row
+              value={bandeira}
+              onChange={(_, value) =>
+                setBandeira(value as "mastercard" | "visa")
+              }
+            >
+              <FormControlLabel
+                value="mastercard"
+                control={<Radio />}
+                label="Mastercard"
+              />
+              <FormControlLabel value="visa" control={<Radio />} label="Visa" />
+            </RadioGroup>
+          </FormControl>
         </Box>
       </DialogContent>
       <DialogActions>

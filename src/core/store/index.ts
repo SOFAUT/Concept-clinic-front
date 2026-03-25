@@ -51,23 +51,20 @@ export const store = configureStore({
       },
     }),
 });
-console.log("[store] store criado");
+
 export const persistor = persistStore(store);
-console.log("[store] persistor criado");
 
 httpClient.setOnUnauthorized(async () => {
   const { refreshToken } = store.getState().auth;
-  console.log("[store] onUnauthorized chamado, refreshToken:", refreshToken);
+  
   if (!refreshToken) {
     console.warn("[store] refreshToken ausente, limpando credenciais");
     return store.dispatch(clearCredentials());
   }
   try {
     const res = await authService.refreshToken({ refresh: refreshToken });
-    console.log("[store] refreshToken resposta", res);
     if (res.status === 200 && res.data) {
       store.dispatch(setAccessToken(res.data.access));
-      console.log("[store] Novo accessToken definido");
     } else {
       console.warn("[store] refreshToken falhou, limpando credenciais");
       store.dispatch(clearCredentials());

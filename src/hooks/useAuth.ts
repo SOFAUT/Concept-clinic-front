@@ -14,17 +14,14 @@ export function useAuth() {
     setError(null)
     try {
       const response = await authService.login({ email, password })
-      console.log('[useAuth] login response completa:', response)
-      console.log('[useAuth] response.data:', response?.data)
       
       if (response?.data?.access && response?.data?.refresh && response?.data?.user) {
-        console.log('[useAuth] Credenciais válidas, salvando no Redux')
+
         setCredentials({
           accessToken: response.data.access,
           refreshToken: response.data.refresh,
           user: response.data.user
         })
-        console.log('[useAuth] Login bem-sucedido!')
         return response.data.user
       } else {
         console.error('[useAuth] Resposta inválida:', response)
@@ -69,7 +66,6 @@ export function useAuth() {
     setError(null)
     try {
       const response = await authService.register({ first_name, last_name, email, password, password2 })
-      console.log('[useAuth] register response', response)
       
       // Após registrar com sucesso, faz login automático
       if (response && response.data) {

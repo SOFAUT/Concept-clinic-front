@@ -25,9 +25,11 @@ import {
   InputLabel,
   LinearProgress,
   IconButton,
+  TextField,
 } from "@mui/material";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import QRCode from "react-qr-code";
 import { useNavigate } from "react-router";
 import { useAppSelector } from "../../core/store/hooks";
 import { APP_ROUTES } from "../../util/constants";
@@ -62,6 +64,7 @@ interface CartaoSalvo {
   nomeTitular: string;
   ultimosQuatroDigitos: string;
   validade: string;
+  bandeira?: "mastercard" | "visa";
 }
 
 interface PagamentoHistorico {
@@ -165,6 +168,8 @@ export default function PaymentDashboard() {
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>("pix");
   const [selectedCardId, setSelectedCardId] = useState<string>("");
   const [installments, setInstallments] = useState<number>(1);
+  const [pixQrModalAberto, setPixQrModalAberto] = useState(false);
+  const [pixQrValue, setPixQrValue] = useState("");
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
     open: false,
     message: "",
@@ -195,8 +200,74 @@ export default function PaymentDashboard() {
     setInstallments(1);
   };
 
-  const handlePay = () => {
+  // Opções de parcelas respeitando o que já foi pago
+  const maxInstallments = selectedProcedure
+    ? (selectedProcedure.installmentsTotal != null
+        ? selectedProcedure.installmentsTotal
+        : (parseInt(selectedProcedure.parcelasCartao || "1", 10) || 1))
+    : 1;
+
+  const alreadyPaidForSelected = selectedProcedure
+    ? (selectedProcedure.installmentsPaid != null
+        ? selectedProcedure.installmentsPaid
+        : (selectedProcedure.status === "paid" ? maxInstallments : 0))
+    : 0;
+
+  const clampedAlreadyPaidForSelected = Math.min(
+    maxInstallments,
+    Math.max(0, alreadyPaidForSelected)
+  );
+
+  const remainingInstallmentsForSelected = Math.max(
+    0,
+    maxInstallments - clampedAlreadyPaidForSelected
+  );
+
+  const installmentOptions =
+    remainingInstallmentsForSelected > 0
+      ? Array.from(
+          { length: remainingInstallmentsForSelected },
+          (_, i) => i + 1
+        )
+      : [];
+
+  const selectedTotalInstallments = selectedProcedure
+    ? selectedProcedure.installmentsTotal != null
+      ? selectedProcedure.installmentsTotal
+      : parseInt(selectedProcedure.parcelasCartao || "1", 10) || 1
+    : 1;
+  const selectedAlreadyPaidInstallments = selectedProcedure
+    ? selectedProcedure.installmentsPaid != null
+      ? selectedProcedure.installmentsPaid
+      : selectedProcedure.status === "paid"
+      ? selectedTotalInstallments
+      : 0
+    : 0;
+  const selectedRemainingInstallments = Math.max(
+    0,
+    selectedTotalInstallments - selectedAlreadyPaidInstallments
+  );
+  const selectedTotalValue = selectedProcedure
+    ? parseFloat(selectedProcedure.valor.replace(".", "").replace(",", ".")) || 0
+    : 0;
+  const selectedPerInstallmentValue =
+    selectedTotalInstallments > 0
+      ? selectedTotalValue / selectedTotalInstallments
+      : selectedTotalValue;
+  const pixAmountPreview = Math.max(
+    0,
+    Math.min(1, selectedRemainingInstallments) * selectedPerInstallmentValue
+  );
+
+  const handlePay = (skipPixQr = false) => {
     if (!selectedProcedure || !userId || !user) return;
+
+    if (formaPagamento === "pix" && !skipPixQr) {
+      const examplePixUrl = `https://example.com/pix-payment?procedureId=${selectedProcedure.procedimentoId}&patientId=${userId}&amount=${pixAmountPreview.toFixed(2)}`;
+      setPixQrValue(examplePixUrl);
+      setPixQrModalAberto(true);
+      return;
+    }
 
     // Quantidade total de parcelas e já pagas antes deste pagamento
     const totalInstallments = selectedProcedure.installmentsTotal != null
@@ -319,39 +390,9 @@ export default function PaymentDashboard() {
       message: "Pagamento realizado com sucesso!",
       severity: "success",
     });
+    setPixQrModalAberto(false);
     setModalPagamentoAberto(false);
   };
-
-  // Opções de parcelas respeitando o que já foi pago
-  const maxInstallments = selectedProcedure
-    ? (selectedProcedure.installmentsTotal != null
-        ? selectedProcedure.installmentsTotal
-        : (parseInt(selectedProcedure.parcelasCartao || "1", 10) || 1))
-    : 1;
-
-  const alreadyPaidForSelected = selectedProcedure
-    ? (selectedProcedure.installmentsPaid != null
-        ? selectedProcedure.installmentsPaid
-        : (selectedProcedure.status === "paid" ? maxInstallments : 0))
-    : 0;
-
-  const clampedAlreadyPaidForSelected = Math.min(
-    maxInstallments,
-    Math.max(0, alreadyPaidForSelected)
-  );
-
-  const remainingInstallmentsForSelected = Math.max(
-    0,
-    maxInstallments - clampedAlreadyPaidForSelected
-  );
-
-  const installmentOptions =
-    remainingInstallmentsForSelected > 0
-      ? Array.from(
-          { length: remainingInstallmentsForSelected },
-          (_, i) => i + 1
-        )
-      : [];
 
   return (
     <Box sx={{ mt: { xs: 7, sm: 8 } }}>
@@ -480,7 +521,7 @@ export default function PaymentDashboard() {
                   </ListItemIcon>
                   <ListItemText
                     primary={`**** **** **** ${c.ultimosQuatroDigitos}`}
-                    secondary={`${c.nomeTitular} · Val. ${c.validade}`}
+                    secondary={`${c.nomeTitular} · Val. ${c.validade}${c.bandeira ? ` · ${c.bandeira === "mastercard" ? "Mastercard" : "Visa"}` : ""}`}
                   />
                 </ListItem>
               ))}
@@ -520,6 +561,18 @@ export default function PaymentDashboard() {
             </RadioGroup>
           </FormControl>
 
+          {formaPagamento === "pix" && (
+            <TextField
+              sx={{ mt: 2 }}
+              label="Valor a pagar via PIX"
+              fullWidth
+              value={`R$ ${pixAmountPreview.toFixed(2).replace(".", ",")}`}
+              slotProps={{
+                input: { readOnly: true },
+              }}
+            />
+          )}
+
           {formaPagamento === "cartao" && (
             <>
               <FormControl component="fieldset" sx={{ mt: 2, width: "100%" }}>
@@ -547,7 +600,7 @@ export default function PaymentDashboard() {
                         key={c.id}
                         value={String(c.id)}
                         control={<Radio />}
-                        label={`**** **** **** ${c.ultimosQuatroDigitos} · ${c.nomeTitular}`}
+                        label={`**** **** **** ${c.ultimosQuatroDigitos} · ${c.nomeTitular}${c.bandeira ? ` · ${c.bandeira === "mastercard" ? "Mastercard" : "Visa"}` : ""}`}
                       />
                     ))}
                   </RadioGroup>
@@ -578,7 +631,7 @@ export default function PaymentDashboard() {
           <Button onClick={() => setModalPagamentoAberto(false)}>Cancelar</Button>
           <Button
             variant="contained"
-            onClick={handlePay}
+            onClick={() => handlePay()}
             disabled={
               !selectedProcedure ||
               (formaPagamento === "cartao" && cartoes.length > 0 && !selectedCardId) ||
@@ -597,6 +650,31 @@ export default function PaymentDashboard() {
       >
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
+
+      <Dialog
+        open={pixQrModalAberto}
+        onClose={() => setPixQrModalAberto(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Pagamento via PIX</DialogTitle>
+        <DialogContent>
+          <Stack alignItems="center" spacing={2} sx={{ py: 1 }}>
+            <Typography variant="body2" color="text.secondary" align="center">
+              Escaneie o QR Code para realizar o pagamento.
+            </Typography>
+            <Box sx={{ p: 2, bgcolor: "common.white", borderRadius: 1 }}>
+              <QRCode value={pixQrValue || "https://example.com/pix-payment"} size={220} />
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPixQrModalAberto(false)}>Fechar</Button>
+          <Button variant="contained" onClick={() => handlePay(true)}>
+            Confirmar pagamento
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
