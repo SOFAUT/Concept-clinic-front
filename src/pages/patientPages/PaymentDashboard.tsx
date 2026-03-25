@@ -51,6 +51,7 @@ interface HiredProcedure {
   parcelasCartao: string; // max installments
   installmentsTotal?: number; // total parcels (for parcelado)
   installmentsPaid?: number;  // how many parcels already paid
+  amountPaid?: number; // valor total já pago (para pagamento flexível)
   status: "pending" | "paid" | "scheduled";
   dataContratacao: string;
   dataAgendada?: string;
@@ -94,6 +95,17 @@ interface ClinicPayment {
 }
 
 type FormaPagamento = "pix" | "cartao";
+type ModoPagamento = "parcelado" | "flexivel";
+
+function parseMoneyToNumber(value: string): number {
+  const normalized = value.replace(/\./g, "").replace(",", ".").trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoneyPtBr(value: number): string {
+  return value.toFixed(2).replace(".", ",");
+}
 
 function loadHiredProcedures(userId: number): HiredProcedure[] {
   try {
@@ -168,8 +180,11 @@ export default function PaymentDashboard() {
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>("pix");
   const [selectedCardId, setSelectedCardId] = useState<string>("");
   const [installments, setInstallments] = useState<number>(1);
+  const [modoPagamento, setModoPagamento] = useState<ModoPagamento>("flexivel");
+  const [amountToPayInput, setAmountToPayInput] = useState<string>("");
   const [pixQrModalAberto, setPixQrModalAberto] = useState(false);
   const [pixQrValue, setPixQrValue] = useState("");
+  const [cardRequiredModalOpen, setCardRequiredModalOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
     open: false,
     message: "",
@@ -196,8 +211,13 @@ export default function PaymentDashboard() {
     setSelectedProcedure(proc);
     setModalPagamentoAberto(true);
     setFormaPagamento("pix");
+    setModoPagamento("flexivel");
     setSelectedCardId("");
     setInstallments(1);
+    const totalValue = parseMoneyToNumber(proc.valor);
+    const alreadyPaid = Math.max(0, proc.amountPaid ?? 0);
+    const remaining = Math.max(0, totalValue - alreadyPaid);
+    setAmountToPayInput(formatMoneyPtBr(remaining));
   };
 
   // Opções de parcelas respeitando o que já foi pago
@@ -248,24 +268,56 @@ export default function PaymentDashboard() {
     selectedTotalInstallments - selectedAlreadyPaidInstallments
   );
   const selectedTotalValue = selectedProcedure
-    ? parseFloat(selectedProcedure.valor.replace(".", "").replace(",", ".")) || 0
+    ? parseMoneyToNumber(selectedProcedure.valor)
     : 0;
   const selectedPerInstallmentValue =
     selectedTotalInstallments > 0
       ? selectedTotalValue / selectedTotalInstallments
       : selectedTotalValue;
-  const pixAmountPreview = Math.max(
+  const fallbackAmountByInstallment = Math.max(
     0,
     Math.min(1, selectedRemainingInstallments) * selectedPerInstallmentValue
   );
+  const selectedAmountPaidValue = Math.max(
+    0,
+    selectedProcedure?.amountPaid ??
+      Math.min(selectedTotalValue, selectedAlreadyPaidInstallments * selectedPerInstallmentValue)
+  );
+  const selectedAmountRemaining = Math.max(0, selectedTotalValue - selectedAmountPaidValue);
+  const requestedAmount = parseMoneyToNumber(amountToPayInput);
+  const sanitizedRequestedAmount = Math.max(0, Math.min(selectedAmountRemaining, requestedAmount));
+  const parceladoAmount = Math.max(
+    0,
+    Math.min(selectedAmountRemaining, installments * selectedPerInstallmentValue)
+  );
+  const flexivelAmount =
+    sanitizedRequestedAmount > 0
+      ? sanitizedRequestedAmount
+      : Math.min(selectedAmountRemaining, fallbackAmountByInstallment);
+  const amountToPayNow = modoPagamento === "parcelado" ? parceladoAmount : flexivelAmount;
+  const pixAmountPreview = amountToPayNow;
 
   const handlePay = (skipPixQr = false) => {
     if (!selectedProcedure || !userId || !user) return;
+
+    if (formaPagamento === "cartao" && cartoes.length === 0) {
+      setCardRequiredModalOpen(true);
+      return;
+    }
 
     if (formaPagamento === "pix" && !skipPixQr) {
       const examplePixUrl = `https://example.com/pix-payment?procedureId=${selectedProcedure.procedimentoId}&patientId=${userId}&amount=${pixAmountPreview.toFixed(2)}`;
       setPixQrValue(examplePixUrl);
       setPixQrModalAberto(true);
+      return;
+    }
+
+    if (amountToPayNow <= 0) {
+      setSnackbar({
+        open: true,
+        message: "Informe um valor válido para pagamento.",
+        severity: "error",
+      });
       return;
     }
 
@@ -291,7 +343,12 @@ export default function PaymentDashboard() {
     }
 
     // Quantas parcelas o usuário está tentando pagar agora
-    const requestedInstallments = formaPagamento === "cartao" ? installments : 1;
+    const requestedInstallments =
+      modoPagamento === "parcelado"
+        ? installments
+        : formaPagamento === "cartao"
+        ? installments
+        : 1;
     const installmentsToPay = Math.min(remainingBefore, requestedInstallments);
 
     // Atualiza o procedimento contratado respeitando o limite de parcelas restantes
@@ -308,12 +365,23 @@ export default function PaymentDashboard() {
       const hRemaining = Math.max(0, hTotalInstallments - hClampedAlreadyPaid);
       const hToPay = Math.min(hRemaining, installmentsToPay);
       const nextPaid = hClampedAlreadyPaid + hToPay;
+      const hTotalValue = parseMoneyToNumber(h.valor);
+      const hPerInstallmentValue =
+        hTotalInstallments > 0 ? hTotalValue / hTotalInstallments : hTotalValue;
+      const hAmountPaidBefore =
+        h.amountPaid ?? Math.min(hTotalValue, hClampedAlreadyPaid * hPerInstallmentValue);
+      const hAmountPaidAfter = Math.min(hTotalValue, hAmountPaidBefore + amountToPayNow);
+      const paidByAmount = hTotalValue > 0 && hAmountPaidAfter >= hTotalValue;
       const fullyPaid = nextPaid >= hTotalInstallments;
       return {
         ...h,
         installmentsTotal: hTotalInstallments,
-        installmentsPaid: nextPaid,
-        status: fullyPaid ? ("paid" as const) : ("pending" as const),
+        installmentsPaid: Math.min(
+          hTotalInstallments,
+          Math.floor(hAmountPaidAfter / (hPerInstallmentValue || 1))
+        ),
+        amountPaid: hAmountPaidAfter,
+        status: fullyPaid || paidByAmount ? ("paid" as const) : ("pending" as const),
       };
     });
     saveHiredProcedures(userId, updatedHired);
@@ -339,11 +407,7 @@ export default function PaymentDashboard() {
       parseFloat(
         selectedAfterUpdate.valor.replace(".", "").replace(",", ".")
       ) || 0;
-    const perInstallmentValue =
-      updatedTotalInstallments > 0
-        ? totalValue / updatedTotalInstallments
-        : totalValue;
-    const amountPaid = installmentsPaidNow * perInstallmentValue;
+    const amountPaid = amountToPayNow;
 
     // Histórico de pagamento do paciente
     const payments = loadPatientPayments(userId);
@@ -359,11 +423,9 @@ export default function PaymentDashboard() {
       parcelas: updatedTotalInstallments,
       data: new Date().toLocaleString("pt-BR"),
       status:
-        updatedAlreadyPaid >= updatedTotalInstallments
+        (selectedAfterUpdate.amountPaid ?? 0) >= totalValue
           ? "Concluído"
-          : installmentsPaidNow > 1
-          ? `${installmentsPaidNow} parcelas pagas (${updatedAlreadyPaid}/${updatedTotalInstallments})`
-          : `Parcela ${updatedAlreadyPaid}/${updatedTotalInstallments}`,
+          : `Pago R$ ${formatMoneyPtBr(selectedAfterUpdate.amountPaid ?? 0)} de R$ ${formatMoneyPtBr(totalValue)}`,
     };
     savePatientPayments(userId, [...payments, newPayment]);
 
@@ -421,14 +483,22 @@ export default function PaymentDashboard() {
                   const totalInstallments = proc.installmentsTotal != null
                     ? proc.installmentsTotal
                     : (parseInt(proc.parcelasCartao || "1", 10) || 1);
+                  const totalValue = parseMoneyToNumber(proc.valor);
+                  const perInstallmentValue =
+                    totalInstallments > 0 ? totalValue / totalInstallments : totalValue;
                   const paidInstallments = proc.installmentsPaid != null
                     ? proc.installmentsPaid
                     : (proc.status === "paid" ? totalInstallments : 0);
                   const clampedPaid = Math.min(totalInstallments, Math.max(0, paidInstallments));
-                  const isPaid = clampedPaid >= totalInstallments;
+                  const amountPaid = Math.max(
+                    0,
+                    proc.amountPaid ?? Math.min(totalValue, clampedPaid * perInstallmentValue)
+                  );
+                  const remainingAmount = Math.max(0, totalValue - amountPaid);
+                  const isPaid = amountPaid >= totalValue || clampedPaid >= totalInstallments;
                   const progress =
-                    totalInstallments > 0
-                      ? (clampedPaid / totalInstallments) * 100
+                    totalValue > 0
+                      ? (amountPaid / totalValue) * 100
                       : isPaid
                       ? 100
                       : 0;
@@ -483,9 +553,7 @@ export default function PaymentDashboard() {
                               >
                                 {isPaid
                                   ? "Pagamento concluído (100%)"
-                                  : totalInstallments > 1
-                                  ? `Pago ${clampedPaid}/${totalInstallments} parcelas`
-                                  : "Aguardando pagamento"}
+                                  : `Pago R$ ${formatMoneyPtBr(amountPaid)} de R$ ${formatMoneyPtBr(totalValue)} · Falta R$ ${formatMoneyPtBr(remainingAmount)}`}
                               </Typography>
                             </Box>
                           </>
@@ -561,20 +629,70 @@ export default function PaymentDashboard() {
             </RadioGroup>
           </FormControl>
 
+          <FormControl component="fieldset" sx={{ mt: 2, width: "100%" }}>
+            <FormLabel component="legend">Tipo de pagamento</FormLabel>
+            <RadioGroup
+              row
+              value={modoPagamento}
+              onChange={(_, v) => setModoPagamento(v as ModoPagamento)}
+            >
+              <FormControlLabel value="parcelado" control={<Radio />} label="Parcelado" />
+              <FormControlLabel value="flexivel" control={<Radio />} label="Flexível" />
+            </RadioGroup>
+          </FormControl>
+
           {formaPagamento === "pix" && (
-            <TextField
-              sx={{ mt: 2 }}
-              label="Valor a pagar via PIX"
-              fullWidth
-              value={`R$ ${pixAmountPreview.toFixed(2).replace(".", ",")}`}
-              slotProps={{
-                input: { readOnly: true },
-              }}
-            />
+            <Box sx={{ mt: 2 }}>
+              {modoPagamento === "parcelado" ? (
+                <>
+                  <FormControl fullWidth>
+                    <InputLabel id="installments-pix-label">Parcelas</InputLabel>
+                    <Select
+                      labelId="installments-pix-label"
+                      value={installments}
+                      label="Parcelas"
+                      onChange={(e) => setInstallments(Number(e.target.value))}
+                    >
+                      {installmentOptions.map((num) => (
+                        <MenuItem key={num} value={num}>
+                          {num}x
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    sx={{ mt: 2 }}
+                    label="Valor a pagar via PIX"
+                    fullWidth
+                    value={`R$ ${formatMoneyPtBr(parceladoAmount)}`}
+                    slotProps={{ input: { readOnly: true } }}
+                    helperText={`Faltante: R$ ${formatMoneyPtBr(selectedAmountRemaining)}`}
+                  />
+                </>
+              ) : (
+                <TextField
+                  label="Valor a pagar via PIX"
+                  fullWidth
+                  value={amountToPayInput}
+                  onChange={(e) => setAmountToPayInput(e.target.value)}
+                  helperText={`Faltante: R$ ${formatMoneyPtBr(selectedAmountRemaining)}`}
+                />
+              )}
+            </Box>
           )}
 
           {formaPagamento === "cartao" && (
             <>
+              {modoPagamento === "flexivel" && (
+                <TextField
+                  sx={{ mt: 2 }}
+                  label="Valor a pagar no cartão"
+                  fullWidth
+                  value={amountToPayInput}
+                  onChange={(e) => setAmountToPayInput(e.target.value)}
+                  helperText={`Faltante: R$ ${formatMoneyPtBr(selectedAmountRemaining)}`}
+                />
+              )}
               <FormControl component="fieldset" sx={{ mt: 2, width: "100%" }}>
                 <FormLabel component="legend">Cartões cadastrados</FormLabel>
                 {cartoes.length === 0 ? (
@@ -624,6 +742,16 @@ export default function PaymentDashboard() {
                   </Select>
                 </FormControl>
               )}
+              {modoPagamento === "parcelado" && (
+                <TextField
+                  sx={{ mt: 2 }}
+                  label="Valor a pagar no cartão"
+                  fullWidth
+                  value={`R$ ${formatMoneyPtBr(parceladoAmount)}`}
+                  slotProps={{ input: { readOnly: true } }}
+                  helperText={`Faltante: R$ ${formatMoneyPtBr(selectedAmountRemaining)}`}
+                />
+              )}
             </>
           )}
         </DialogContent>
@@ -634,6 +762,7 @@ export default function PaymentDashboard() {
             onClick={() => handlePay()}
             disabled={
               !selectedProcedure ||
+              amountToPayNow <= 0 ||
               (formaPagamento === "cartao" && cartoes.length > 0 && !selectedCardId) ||
               (formaPagamento === "cartao" && installmentOptions.length === 0)
             }
@@ -672,6 +801,33 @@ export default function PaymentDashboard() {
           <Button onClick={() => setPixQrModalAberto(false)}>Fechar</Button>
           <Button variant="contained" onClick={() => handlePay(true)}>
             Confirmar pagamento
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={cardRequiredModalOpen}
+        onClose={() => setCardRequiredModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Cartão não cadastrado</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Para pagar com cartão de crédito, é necessário cadastrar ao menos um cartão.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCardRequiredModalOpen(false)}>Fechar</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setCardRequiredModalOpen(false);
+              setModalPagamentoAberto(false);
+              navigate(APP_ROUTES.PATIENT.CARDS);
+            }}
+          >
+            Cadastrar cartão
           </Button>
         </DialogActions>
       </Dialog>
